@@ -1,17 +1,23 @@
+using Fcg.Catalog.Domain.Interfaces;
+using Fcg.Catalog.Domain.Services;
 using Fcg.Catalog.Infrastructure.Persistence;
+using MassTransit;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Testcontainers.PostgreSql;
 using Xunit;
 
 namespace Fcg.Catalog.Tests.Integration.Fixtures;
 
-// Sobe um host mínimo (só persistência) contra um Postgres real do Testcontainers.
-// Cobre só a fatia Postgres (sem RabbitMQ nem JWT).
+// Sobe a API real contra um Postgres do Testcontainers. Cobre a fatia Postgres (sem RabbitMQ
+// nem JWT). A mensageria não está cabeada ainda; um IPublishEndpoint no-op resolve o fluxo
+// de criação de pedido sem broker.
+//
+// IPedidoDomainService e IPublishEndpoint só ganham registro de produção mais adiante; aqui
+// são providos localmente para exercitar o endpoint de criação de pedido ponta a ponta.
 public class CatalogApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine")
@@ -20,15 +26,14 @@ public class CatalogApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        // Religa o DbContext ao container. ConfigureTestServices roda após o AddInfrastructure,
-        // então sobrescreve a connection string (que o registro de produção lê cedo demais).
+        // Satisfaz o fail-fast de connection string do startup e aponta o DbContext ao container.
+        // O container já está de pé (StartAsync precede o build do host em InitializeAsync).
+        builder.UseSetting("ConnectionStrings:Catalog", _postgres.GetConnectionString());
+
         builder.ConfigureTestServices(services =>
         {
-            services.RemoveAll(typeof(DbContextOptions<CatalogDbContext>));
-
-            services.AddDbContext<CatalogDbContext>(options =>
-                options.UseNpgsql(_postgres.GetConnectionString()).UseSnakeCaseNamingConvention()
-            );
+            services.AddScoped<IPedidoDomainService, PedidoDomainService>();
+            services.AddSingleton<IPublishEndpoint, PublishEndpointNoop>();
         });
     }
 
