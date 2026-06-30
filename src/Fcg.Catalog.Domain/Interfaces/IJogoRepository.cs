@@ -5,6 +5,11 @@ namespace Fcg.Catalog.Domain.Interfaces;
 public interface IJogoRepository
 {
     Task<Jogo?> ObterPorIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Jogo>> ListarAsync(
+        int pagina,
+        int tamanhoPagina,
+        CancellationToken cancellationToken = default
+    );
     Task AdicionarAsync(Jogo jogo, CancellationToken cancellationToken = default);
     void Atualizar(Jogo jogo);
 }

@@ -9,5 +9,9 @@ public interface IItemBibliotecaRepository
         Guid jogoId,
         CancellationToken cancellationToken = default
     );
+    Task<IReadOnlyList<ItemBiblioteca>> ListarPorUsuarioAsync(
+        Guid usuarioId,
+        CancellationToken cancellationToken = default
+    );
     Task AdicionarAsync(ItemBiblioteca item, CancellationToken cancellationToken = default);
 }

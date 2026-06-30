@@ -7,6 +7,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Abstração de publish (IPublishEndpoint); a Application não conhece RabbitMQ.
+         Versão fixada: a 9.x é comercial. -->
+    <PackageReference Include="MassTransit" Version="8.5.10" />
+    <!-- Contratos de evento de integração (records puros) — OrderPlacedEvent. -->
+    <PackageReference Include="Fcg.Contracts" Version="1.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Fcg.Catalog.Domain\Fcg.Catalog.Domain.csproj" />
   </ItemGroup>
 
