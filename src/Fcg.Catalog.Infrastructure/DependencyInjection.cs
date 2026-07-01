@@ -1,4 +1,5 @@
 using Fcg.Catalog.Domain.Interfaces;
+using Fcg.Catalog.Infrastructure.Messaging;
 using Fcg.Catalog.Infrastructure.Persistence;
 using Fcg.Catalog.Infrastructure.Persistence.Repositories;
 using Microsoft.EntityFrameworkCore;
@@ -33,6 +34,8 @@ public static class DependencyInjection
 
         // Mesmo CatalogDbContext scoped resolve o UnitOfWork — repos e UoW compartilham contexto.
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<CatalogDbContext>());
+
+        services.AddCatalogMessaging(configuration);
 
         return services;
     }
