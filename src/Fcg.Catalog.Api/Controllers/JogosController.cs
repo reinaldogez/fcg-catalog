@@ -1,5 +1,7 @@
+using Fcg.Catalog.Api.Authorization;
 using Fcg.Catalog.Application.DTOs;
 using Fcg.Catalog.Application.UseCases.Jogos;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
@@ -7,6 +9,7 @@ namespace Fcg.Catalog.Api.Controllers;
 
 [ApiController]
 [Route("api/jogos")]
+[Authorize]
 [EnableRateLimiting("fixed")]
 public class JogosController(
     CriarJogoUseCase criarJogo,
@@ -17,6 +20,7 @@ public class JogosController(
 ) : ControllerBase
 {
     [HttpPost]
+    [Authorize(Policy = AuthorizationPolicies.AdminOnly)]
     [ProducesResponseType(typeof(JogoResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CriarAsync(
@@ -52,6 +56,7 @@ public class JogosController(
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.AdminOnly)]
     [ProducesResponseType(typeof(JogoResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> AtualizarAsync(
@@ -65,6 +70,7 @@ public class JogosController(
     }
 
     [HttpPatch("{id:guid}/desativar")]
+    [Authorize(Policy = AuthorizationPolicies.AdminOnly)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DesativarAsync(Guid id, CancellationToken cancellationToken)

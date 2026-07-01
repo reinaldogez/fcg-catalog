@@ -1,6 +1,9 @@
 using System.Text.Json.Serialization;
+using Fcg.Catalog.Api.Authentication;
+using Fcg.Catalog.Api.Authorization;
 using Fcg.Catalog.Api.Health;
 using Fcg.Catalog.Api.Middleware;
+using Fcg.Catalog.Api.OpenApi;
 using Fcg.Catalog.Application;
 using Fcg.Catalog.Infrastructure;
 using Fcg.Catalog.Infrastructure.Persistence;
@@ -26,7 +29,12 @@ builder
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter())
     );
 
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options =>
+    options.AddDocumentTransformer<BearerSecuritySchemeTransformer>()
+);
+
+builder.Services.AddCatalogAuthentication(builder.Configuration, builder.Environment);
+builder.Services.AddCatalogAuthorization();
 
 builder.Services.AddRateLimiter(options =>
 {
@@ -57,7 +65,8 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseRateLimiter();
 
-// Autenticação e autorização entram numa etapa posterior.
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 app.MapCatalogHealthChecks();

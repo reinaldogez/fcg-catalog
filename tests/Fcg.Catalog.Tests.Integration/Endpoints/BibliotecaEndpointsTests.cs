@@ -13,7 +13,7 @@ public class BibliotecaEndpointsTests(CatalogApiFactory factory) : IntegrationTe
     [Fact]
     public async Task ObterBibliotecaVaziaDeveRetornar200ComListaVazia()
     {
-        HttpClient client = Factory.CreateClient();
+        HttpClient client = Factory.CreateAuthenticatedClient(JwtTestTokens.TokenAdmin());
 
         HttpResponseMessage resposta = await client.GetAsync($"/api/biblioteca/{Guid.NewGuid()}");
 

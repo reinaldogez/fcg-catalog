@@ -1,27 +1,26 @@
 using System.Security.Claims;
+using Fcg.Catalog.Api.Authorization;
 using Fcg.Catalog.Application.DTOs;
 using Fcg.Catalog.Application.UseCases.Pedidos;
+using Fcg.Catalog.Domain.Entities;
+using Fcg.Catalog.Domain.Exceptions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.IdentityModel.JsonWebTokens;
 
 namespace Fcg.Catalog.Api.Controllers;
 
 [ApiController]
 [Route("api/pedidos")]
+[Authorize]
 [EnableRateLimiting("fixed")]
 public class PedidosController(
     CriarPedidoUseCase criarPedido,
-    ObterPedidoPorIdUseCase obterPedidoPorId
+    ObterPedidoPorIdUseCase obterPedidoPorId,
+    IAuthorizationService authorizationService
 ) : ControllerBase
 {
-    // O identitário virá das claims do JWT quando a autenticação for cabeada. A leitura de
-    // claims abaixo já é a forma final; só o fallback some quando o pipeline popular User.
-    private static readonly Guid s_usuarioPlaceholder = Guid.Parse(
-        "00000000-0000-0000-0000-000000000001"
-    );
-    private const string EmailPlaceholder = "placeholder@fcg.local";
-    private const string NomePlaceholder = "Usuário Placeholder";
-
     [HttpPost]
     [ProducesResponseType(typeof(PedidoResponse), StatusCodes.Status202Accepted)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -31,12 +30,15 @@ public class PedidosController(
         CancellationToken cancellationToken
     )
     {
-        Guid usuarioId =
-            User.FindFirst("sub")?.Value is string sub && Guid.TryParse(sub, out Guid id)
-                ? id
-                : s_usuarioPlaceholder;
-        string email = User.FindFirst(ClaimTypes.Email)?.Value ?? EmailPlaceholder;
-        string nome = User.FindFirst(ClaimTypes.Name)?.Value ?? NomePlaceholder;
+        // sub é obrigatório: sem ele não há em nome de quem criar o pedido (nunca vem do body).
+        if (
+            User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value is not string sub
+            || !Guid.TryParse(sub, out Guid usuarioId)
+        )
+            throw new DomainAuthException("Token sem claim 'sub' válida.");
+
+        string email = User.FindFirst(ClaimTypes.Email)?.Value ?? string.Empty;
+        string nome = User.FindFirst(ClaimTypes.Name)?.Value ?? string.Empty;
 
         PedidoResponse pedido = await criarPedido.ExecutarAsync(
             request,
@@ -50,10 +52,23 @@ public class PedidosController(
 
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(PedidoResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ObterPorIdAsync(Guid id, CancellationToken cancellationToken)
     {
-        PedidoResponse? pedido = await obterPedidoPorId.ExecutarAsync(id, cancellationToken);
-        return pedido is null ? NotFound() : Ok(pedido);
+        // Carrega (404 antes de autorizar), autoriza pelo dono do agregado, então responde.
+        Pedido? pedido = await obterPedidoPorId.ObterEntidadeAsync(id, cancellationToken);
+        if (pedido is null)
+            return NotFound();
+
+        AuthorizationResult resultado = await authorizationService.AuthorizeAsync(
+            User,
+            pedido,
+            new PedidoOwnershipRequirement()
+        );
+        if (!resultado.Succeeded)
+            return Forbid();
+
+        return Ok(PedidoResponse.De(pedido));
     }
 }

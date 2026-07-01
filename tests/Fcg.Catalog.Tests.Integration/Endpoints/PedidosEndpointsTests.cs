@@ -13,7 +13,7 @@ public class PedidosEndpointsTests(CatalogApiFactory factory) : IntegrationTestB
     [Fact]
     public async Task CriarPedidoDeveRetornar202()
     {
-        HttpClient client = Factory.CreateClient();
+        HttpClient client = Factory.CreateAuthenticatedClient(JwtTestTokens.TokenAdmin());
         var novoJogo = new { titulo = "Stardew Valley", preco = 24.90m };
         HttpResponseMessage criacaoJogo = await client.PostAsJsonAsync("/api/jogos", novoJogo);
         JogoResponse jogo = (await criacaoJogo.Content.ReadFromJsonAsync<JogoResponse>())!;
@@ -29,7 +29,7 @@ public class PedidosEndpointsTests(CatalogApiFactory factory) : IntegrationTestB
     [Fact]
     public async Task ObterPedidoInexistenteDeveRetornar404()
     {
-        HttpClient client = Factory.CreateClient();
+        HttpClient client = Factory.CreateAuthenticatedClient(JwtTestTokens.TokenAdmin());
 
         HttpResponseMessage resposta = await client.GetAsync($"/api/pedidos/{Guid.NewGuid()}");
 
