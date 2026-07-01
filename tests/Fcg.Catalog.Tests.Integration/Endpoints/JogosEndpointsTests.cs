@@ -14,7 +14,7 @@ public class JogosEndpointsTests(CatalogApiFactory factory) : IntegrationTestBas
     [Fact]
     public async Task ObterJogoInexistenteDeveRetornar404()
     {
-        HttpClient client = Factory.CreateClient();
+        HttpClient client = Factory.CreateAuthenticatedClient(JwtTestTokens.TokenAdmin());
 
         HttpResponseMessage resposta = await client.GetAsync($"/api/jogos/{Guid.NewGuid()}");
 
@@ -24,7 +24,7 @@ public class JogosEndpointsTests(CatalogApiFactory factory) : IntegrationTestBas
     [Fact]
     public async Task CriarJogoComTituloInvalidoDeveRetornar400ProblemJsonComTraceId()
     {
-        HttpClient client = Factory.CreateClient();
+        HttpClient client = Factory.CreateAuthenticatedClient(JwtTestTokens.TokenAdmin());
         var request = new { titulo = new string('a', 201), preco = 10m };
 
         HttpResponseMessage resposta = await client.PostAsJsonAsync("/api/jogos", request);
@@ -42,7 +42,7 @@ public class JogosEndpointsTests(CatalogApiFactory factory) : IntegrationTestBas
     [Fact]
     public async Task CriarObterEListarJogo_CaminhoFeliz()
     {
-        HttpClient client = Factory.CreateClient();
+        HttpClient client = Factory.CreateAuthenticatedClient(JwtTestTokens.TokenAdmin());
         var novo = new
         {
             titulo = "Hollow Knight",
@@ -71,7 +71,7 @@ public class JogosEndpointsTests(CatalogApiFactory factory) : IntegrationTestBas
     [Fact]
     public async Task AtualizarEDesativarJogo()
     {
-        HttpClient client = Factory.CreateClient();
+        HttpClient client = Factory.CreateAuthenticatedClient(JwtTestTokens.TokenAdmin());
         var novo = new { titulo = "Celeste", preco = 39.90m };
         HttpResponseMessage criacao = await client.PostAsJsonAsync("/api/jogos", novo);
         JogoResponse criado = (await criacao.Content.ReadFromJsonAsync<JogoResponse>())!;

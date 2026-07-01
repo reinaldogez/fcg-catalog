@@ -1,12 +1,16 @@
+using System.Net.Http.Headers;
 using Fcg.Catalog.Domain.Interfaces;
 using Fcg.Catalog.Domain.Services;
 using Fcg.Catalog.Infrastructure.Persistence;
 using MassTransit;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Testcontainers.PostgreSql;
 using Xunit;
 
@@ -30,11 +34,38 @@ public class CatalogApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         // O container já está de pé (StartAsync precede o build do host em InitializeAsync).
         builder.UseSetting("ConnectionStrings:Catalog", _postgres.GetConnectionString());
 
+        // Satisfaz o fail-fast do JwtSettings; issuer/audience casam com os tokens da fixture.
+        builder.UseSetting("Jwt:JwksUri", $"{JwtTestTokens.TestIssuer}/.well-known/jwks.json");
+        builder.UseSetting("Jwt:Issuer", JwtTestTokens.TestIssuer);
+        builder.UseSetting("Jwt:Audience", JwtTestTokens.TestAudience);
+
         builder.ConfigureTestServices(services =>
         {
             services.AddScoped<IPedidoDomainService, PedidoDomainService>();
             services.AddSingleton<IPublishEndpoint, PublishEndpointNoop>();
+
+            // Injeta a chave pública de teste como configuração estática do handler: valida os
+            // tokens da fixture sem buscar o JWKS real na rede.
+            services.PostConfigure<JwtBearerOptions>(
+                JwtBearerDefaults.AuthenticationScheme,
+                options =>
+                {
+                    OpenIdConnectConfiguration configuracao = new();
+                    configuracao.SigningKeys.Add(JwtTestTokens.PublicSecurityKey);
+                    options.Configuration = configuracao;
+                    options.TokenValidationParameters.IssuerSigningKey =
+                        JwtTestTokens.PublicSecurityKey;
+                }
+            );
         });
+    }
+
+    // Cliente já autenticado com o Bearer informado — açúcar para os testes de auth.
+    public HttpClient CreateAuthenticatedClient(string token)
+    {
+        HttpClient client = CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        return client;
     }
 
     public async Task InitializeAsync()
