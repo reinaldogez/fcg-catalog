@@ -73,7 +73,14 @@ public static class MassTransitConfiguration
                     // da fila consumidora — inequívoco na Management UI.
                     cfg.ReceiveEndpoint(
                         "payment-processed.fcg-catalog",
-                        e => e.ConfigureConsumer<PaymentProcessedConsumer>(context)
+                        e =>
+                        {
+                            // Inbox no endpoint: deduplica a mesma mensagem (mesmo MessageId) sob
+                            // redelivery e envolve as escritas do consumer numa transação única do
+                            // mesmo CatalogDbContext scoped — o commit é do harness, não do use case.
+                            e.UseEntityFrameworkOutbox<CatalogDbContext>(context);
+                            e.ConfigureConsumer<PaymentProcessedConsumer>(context);
+                        }
                     );
                 }
             );

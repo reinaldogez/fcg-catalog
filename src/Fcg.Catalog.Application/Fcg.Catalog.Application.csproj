@@ -12,6 +12,8 @@
     <PackageReference Include="MassTransit" Version="8.5.10" />
     <!-- Contratos de evento de integração (records puros) — OrderPlacedEvent. -->
     <PackageReference Include="Fcg.Contracts" Version="1.1.0" />
+    <!-- Abstração de log (ILogger) para a semântica de borda dos use cases de fechamento. -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.4" />
   </ItemGroup>
 
   <ItemGroup>
