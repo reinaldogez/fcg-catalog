@@ -3,6 +3,7 @@ using Fcg.Catalog.Api.Authentication;
 using Fcg.Catalog.Api.Authorization;
 using Fcg.Catalog.Api.Health;
 using Fcg.Catalog.Api.Middleware;
+using Fcg.Catalog.Api.Observability;
 using Fcg.Catalog.Api.OpenApi;
 using Fcg.Catalog.Application;
 using Fcg.Catalog.Infrastructure;
@@ -14,8 +15,9 @@ using Serilog;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-// Log estruturado no console. Os sinks de stack (OTLP/Loki) entram numa etapa de observabilidade.
-builder.Services.AddSerilog(config => config.Enrich.FromLogContext().WriteTo.Console());
+// Serilog + OpenTelemetry: console sempre; OTLP e sink Loki config-gated (sobem so com
+// OTEL_EXPORTER_OTLP_ENDPOINT / Loki:Url). Registrado antes do Build para valer tambem no Job.
+builder.AddObservability();
 
 // Fail-fast: a API depende de PostgreSQL; sem connection string não há boot válido.
 if (string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("Catalog")))
