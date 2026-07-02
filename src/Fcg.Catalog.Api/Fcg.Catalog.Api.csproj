@@ -20,11 +20,4 @@
     <ProjectReference Include="..\Fcg.Catalog.Infrastructure\Fcg.Catalog.Infrastructure.csproj" />
   </ItemGroup>
 
-  <!-- Instala os git hooks (Husky) apos o restore, sem passo manual pos-clone.
-       Desative com HUSKY=0. WorkingDirectory na raiz, onde vivem manifesto e .husky. -->
-  <Target Name="husky" BeforeTargets="Restore;CollectPackageReferences" Condition="'$(HUSKY)' != 0">
-    <Exec Command="dotnet tool restore" StandardOutputImportance="Low" StandardErrorImportance="High" WorkingDirectory="$(MSBuildProjectDirectory)/../.." />
-    <Exec Command="dotnet husky install" StandardOutputImportance="Low" StandardErrorImportance="High" WorkingDirectory="$(MSBuildProjectDirectory)/../.." />
-  </Target>
-
 </Project>

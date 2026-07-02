@@ -1,16 +1,6 @@
 <Project>
 
-  <ItemGroup>
-    <PackageReference Include="CSharpier.MsBuild" Version="1.2.6">
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-  </ItemGroup>
-
   <PropertyGroup>
-    <!-- Na CI: so checa e quebra o build se houver .cs nao-formatado.
-         Local: formata os .cs in-place durante o build. -->
-    <CSharpier_Check Condition="'$(ContinuousIntegrationBuild)' == 'true'">true</CSharpier_Check>
-
     <!-- Liga os analisadores de estilo IDExxxx no build (equivalente ao dotnet format style). -->
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
 
