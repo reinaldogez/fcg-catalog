@@ -24,4 +24,9 @@
     <ProjectReference Include="..\Fcg.Catalog.Application\Fcg.Catalog.Application.csproj" />
   </ItemGroup>
 
+  <!-- Catálogo-semente embarcado no assembly: o seeder lê o recurso, sem arquivo solto no deploy. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Seed\seed-games.json" />
+  </ItemGroup>
+
 </Project>

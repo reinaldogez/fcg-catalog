@@ -2,6 +2,7 @@ using Fcg.Catalog.Domain.Interfaces;
 using Fcg.Catalog.Infrastructure.Messaging;
 using Fcg.Catalog.Infrastructure.Persistence;
 using Fcg.Catalog.Infrastructure.Persistence.Repositories;
+using Fcg.Catalog.Infrastructure.Seed;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,6 +35,9 @@ public static class DependencyInjection
 
         // Mesmo CatalogDbContext scoped resolve o UnitOfWork — repos e UoW compartilham contexto.
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<CatalogDbContext>());
+
+        // Seeder do catálogo inicial — resolvido pelo Job (--seed); no boot normal fica ocioso.
+        services.AddScoped<CatalogSeeder>();
 
         services.AddCatalogMessaging(configuration);
 

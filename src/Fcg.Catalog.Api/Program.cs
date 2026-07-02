@@ -7,7 +7,9 @@ using Fcg.Catalog.Api.OpenApi;
 using Fcg.Catalog.Application;
 using Fcg.Catalog.Infrastructure;
 using Fcg.Catalog.Infrastructure.Persistence;
+using Fcg.Catalog.Infrastructure.Seed;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
@@ -53,6 +55,21 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.AddHealthChecks().AddDbContextCheck<CatalogDbContext>("postgres", tags: ["ready"]);
 
 WebApplication app = builder.Build();
+
+// Modo Job: o mesmo binário aplica migrations e/ou semeia e encerra sem subir o host web.
+// Flags independentes e combináveis; ordem migrate→seed forçada aqui, não pela ordem dos args.
+if (args.Contains("--migrate") || args.Contains("--seed"))
+{
+    using IServiceScope scope = app.Services.CreateScope();
+
+    if (args.Contains("--migrate"))
+        await scope.ServiceProvider.GetRequiredService<CatalogDbContext>().Database.MigrateAsync();
+
+    if (args.Contains("--seed"))
+        await scope.ServiceProvider.GetRequiredService<CatalogSeeder>().SeedAsync();
+
+    return;
+}
 
 app.UseSerilogRequestLogging();
 
