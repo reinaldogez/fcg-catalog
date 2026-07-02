@@ -12,7 +12,7 @@ public class PedidoDomainService(
     IPedidoRepository pedidoRepository
 ) : IPedidoDomainService
 {
-    public async Task<Pedido> RegistrarAsync(
+    public async Task<(Pedido Pedido, string TituloJogo)> RegistrarAsync(
         Guid usuarioId,
         Guid jogoId,
         CancellationToken cancellationToken = default
@@ -32,6 +32,7 @@ public class PedidoDomainService(
         if (await pedidoRepository.ExistePedidoPendenteAsync(usuarioId, jogoId, cancellationToken))
             throw new DomainConflictException("Já existe um pedido pendente para este jogo.");
 
-        return Pedido.Criar(usuarioId, jogoId, jogo.Preco);
+        // Reaproveita o jogo já carregado: o título vira GameName no fat event.
+        return (Pedido.Criar(usuarioId, jogoId, jogo.Preco), jogo.Titulo.Valor);
     }
 }

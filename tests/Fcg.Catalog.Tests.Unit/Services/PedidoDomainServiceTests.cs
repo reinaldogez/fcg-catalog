@@ -63,11 +63,16 @@ public class PedidoDomainServiceTests
         ConfigurarPendente(false);
         var usuarioId = Guid.NewGuid();
 
-        Pedido pedido = await _service.RegistrarAsync(usuarioId, jogo.Id, CancellationToken.None);
+        (Pedido pedido, string tituloJogo) = await _service.RegistrarAsync(
+            usuarioId,
+            jogo.Id,
+            CancellationToken.None
+        );
 
         pedido.UsuarioId.Should().Be(usuarioId);
         pedido.JogoId.Should().Be(jogo.Id);
         pedido.Valor.Should().Be(jogo.Preco);
+        tituloJogo.Should().Be("Celeste");
     }
 
     [Fact]
@@ -130,7 +135,7 @@ public class PedidoDomainServiceTests
         ConfigurarPosse(false);
         ConfigurarPendente(false);
 
-        Pedido pedido = await _service.RegistrarAsync(
+        (Pedido pedido, _) = await _service.RegistrarAsync(
             Guid.NewGuid(),
             jogo.Id,
             CancellationToken.None

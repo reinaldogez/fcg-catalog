@@ -22,7 +22,7 @@ public class CriarPedidoUseCase(
         CancellationToken cancellationToken = default
     )
     {
-        Pedido pedido = await pedidoDomainService.RegistrarAsync(
+        (Pedido pedido, string tituloJogo) = await pedidoDomainService.RegistrarAsync(
             usuarioId,
             request.JogoId,
             cancellationToken
@@ -35,12 +35,13 @@ public class CriarPedidoUseCase(
         await publishEndpoint.Publish(
             new OrderPlacedEvent
             {
+                OccurredAt = DateTimeOffset.UtcNow,
                 OrderId = pedido.Id,
                 UserId = usuarioId,
                 UserEmail = usuarioEmail,
                 UserName = usuarioNome,
                 GameId = pedido.JogoId,
-                GameName = string.Empty,
+                GameName = tituloJogo,
                 Price = pedido.Valor.Valor,
             },
             cancellationToken
