@@ -38,7 +38,7 @@ public class CriarPedidoUseCaseTests
             .Setup(s =>
                 s.RegistrarAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>())
             )
-            .ReturnsAsync(pedido);
+            .ReturnsAsync((pedido, "Celeste"));
 
         // Grava a ordem real das chamadas — a prova de atomicidade do Outbox.
         List<string> ordem = [];
@@ -60,6 +60,39 @@ public class CriarPedidoUseCaseTests
         );
 
         ordem.Should().Equal("publish", "commit");
+    }
+
+    [Fact]
+    public async Task DevePublicarEventoComGameNameEPrecoSnapshot()
+    {
+        var pedido = Pedido.Criar(Guid.NewGuid(), Guid.NewGuid(), Preco.Criar(99.90m));
+        _domainService
+            .Setup(s =>
+                s.RegistrarAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>())
+            )
+            .ReturnsAsync((pedido, "Hollow Knight"));
+
+        OrderPlacedEvent? publicado = null;
+        _publishEndpoint
+            .Setup(p => p.Publish(It.IsAny<OrderPlacedEvent>(), It.IsAny<CancellationToken>()))
+            .Callback<OrderPlacedEvent, CancellationToken>((evento, _) => publicado = evento)
+            .Returns(Task.CompletedTask);
+
+        await _useCase.ExecutarAsync(
+            new CriarPedidoRequest(pedido.JogoId),
+            pedido.UsuarioId,
+            "ana@exemplo.com",
+            "Ana",
+            CancellationToken.None
+        );
+
+        publicado.Should().NotBeNull();
+        publicado!.OrderId.Should().Be(pedido.Id);
+        publicado.GameId.Should().Be(pedido.JogoId);
+        publicado.GameName.Should().Be("Hollow Knight");
+        publicado.Price.Should().Be(pedido.Valor.Valor);
+        publicado.UserEmail.Should().Be("ana@exemplo.com");
+        publicado.UserName.Should().Be("Ana");
     }
 
     [Fact]
