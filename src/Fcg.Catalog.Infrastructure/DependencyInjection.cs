@@ -1,4 +1,5 @@
 using Fcg.Catalog.Domain.Interfaces;
+using Fcg.Catalog.Domain.Services;
 using Fcg.Catalog.Infrastructure.Messaging;
 using Fcg.Catalog.Infrastructure.Persistence;
 using Fcg.Catalog.Infrastructure.Persistence.Repositories;
@@ -32,6 +33,10 @@ public static class DependencyInjection
         services.AddScoped<IJogoRepository, JogoRepository>();
         services.AddScoped<IPedidoRepository, PedidoRepository>();
         services.AddScoped<IItemBibliotecaRepository, ItemBibliotecaRepository>();
+
+        // Invariantes de criação de pedido que consultam repositório — resolve aqui porque suas
+        // dependências (os três repos acima) vivem nesta extensão; infra-de-domínio, mesmo padrão.
+        services.AddScoped<IPedidoDomainService, PedidoDomainService>();
 
         // Mesmo CatalogDbContext scoped resolve o UnitOfWork — repos e UoW compartilham contexto.
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<CatalogDbContext>());
