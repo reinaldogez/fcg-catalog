@@ -1,0 +1,156 @@
+[
+  {
+    "titulo": "The Witcher 3: Wild Hunt",
+    "preco": 79.90,
+    "descricao": "RPG de mundo aberto seguindo o bruxo Geralt de Rivia em busca de Ciri.",
+    "desenvolvedora": "CD Projekt Red",
+    "dataLancamento": "2015-05-19"
+  },
+  {
+    "titulo": "Bloodborne",
+    "preco": 149.90,
+    "descricao": "Action RPG gótico ambientado na cidade amaldiçoada de Yharnam.",
+    "desenvolvedora": "FromSoftware",
+    "dataLancamento": "2015-03-24"
+  },
+  {
+    "titulo": "Fallout 4",
+    "preco": 129.90,
+    "descricao": "RPG pós-apocalíptico de mundo aberto na Comunidade de Boston.",
+    "desenvolvedora": "Bethesda Game Studios",
+    "dataLancamento": "2015-11-10"
+  },
+  {
+    "titulo": "Stardew Valley",
+    "preco": 24.99,
+    "descricao": "Simulador de fazenda com vida no interior, mineração e relacionamentos.",
+    "desenvolvedora": "ConcernedApe",
+    "dataLancamento": "2016-02-26"
+  },
+  {
+    "titulo": "Doom",
+    "preco": 99.90,
+    "descricao": "FPS frenético de combate contra hordas demoníacas em Marte.",
+    "desenvolvedora": "id Software",
+    "dataLancamento": "2016-05-13"
+  },
+  {
+    "titulo": "Overwatch",
+    "preco": 59.90,
+    "descricao": "Hero shooter por equipes com heróis e habilidades distintas.",
+    "desenvolvedora": "Blizzard Entertainment",
+    "dataLancamento": "2016-05-24"
+  },
+  {
+    "titulo": "The Legend of Zelda: Breath of the Wild",
+    "preco": 299.90,
+    "descricao": "Aventura de mundo aberto explorando o reino de Hyrule.",
+    "desenvolvedora": "Nintendo",
+    "dataLancamento": "2017-03-03"
+  },
+  {
+    "titulo": "Horizon Zero Dawn",
+    "preco": 199.90,
+    "descricao": "Action RPG em mundo pós-apocalíptico dominado por máquinas.",
+    "desenvolvedora": "Guerrilla Games",
+    "dataLancamento": "2017-02-28"
+  },
+  {
+    "titulo": "Persona 5",
+    "preco": 249.90,
+    "descricao": "JRPG estiloso sobre estudantes que exploram corações corrompidos.",
+    "desenvolvedora": "Atlus",
+    "dataLancamento": "2017-04-04"
+  },
+  {
+    "titulo": "Hollow Knight",
+    "preco": 49.90,
+    "descricao": "Metroidvania desafiador no reino subterrâneo de Hallownest.",
+    "desenvolvedora": "Team Cherry",
+    "dataLancamento": "2017-02-24"
+  },
+  {
+    "titulo": "God of War",
+    "preco": 199.90,
+    "descricao": "Kratos e Atreus em uma jornada pela mitologia nórdica.",
+    "desenvolvedora": "Santa Monica Studio",
+    "dataLancamento": "2018-04-20"
+  },
+  {
+    "titulo": "Red Dead Redemption 2",
+    "preco": 249.90,
+    "descricao": "Épico de mundo aberto sobre foras da lei no fim do Velho Oeste.",
+    "desenvolvedora": "Rockstar Games",
+    "dataLancamento": "2018-10-26"
+  },
+  {
+    "titulo": "Celeste",
+    "preco": 44.90,
+    "descricao": "Plataforma preciso sobre superar a montanha e a si mesma.",
+    "desenvolvedora": "Maddy Makes Games",
+    "dataLancamento": "2018-01-25"
+  },
+  {
+    "titulo": "Sekiro: Shadows Die Twice",
+    "preco": 249.90,
+    "descricao": "Ação e furtividade shinobi no Japão Sengoku fantástico.",
+    "desenvolvedora": "FromSoftware",
+    "dataLancamento": "2019-03-22"
+  },
+  {
+    "titulo": "Death Stranding",
+    "preco": 199.90,
+    "descricao": "Jornada de entregas reconectando uma América fragmentada.",
+    "desenvolvedora": "Kojima Productions",
+    "dataLancamento": "2019-11-08"
+  },
+  {
+    "titulo": "Hades",
+    "preco": 74.90,
+    "descricao": "Roguelike de ação sobre escapar do Submundo grego.",
+    "desenvolvedora": "Supergiant Games",
+    "dataLancamento": "2020-09-17"
+  },
+  {
+    "titulo": "The Last of Us Part II",
+    "preco": 249.90,
+    "descricao": "Drama de sobrevivência sobre vingança em um mundo devastado.",
+    "desenvolvedora": "Naughty Dog",
+    "dataLancamento": "2020-06-19"
+  },
+  {
+    "titulo": "Cyberpunk 2077",
+    "preco": 199.90,
+    "descricao": "RPG de ação em mundo aberto na distópica Night City.",
+    "desenvolvedora": "CD Projekt Red",
+    "dataLancamento": "2020-12-10"
+  },
+  {
+    "titulo": "It Takes Two",
+    "preco": 129.90,
+    "descricao": "Aventura cooperativa obrigatória sobre um casal em miniatura.",
+    "desenvolvedora": "Hazelight Studios",
+    "dataLancamento": "2021-03-26"
+  },
+  {
+    "titulo": "Elden Ring",
+    "preco": 249.90,
+    "descricao": "Action RPG de mundo aberto nas Terras Intermédias.",
+    "desenvolvedora": "FromSoftware",
+    "dataLancamento": "2022-02-25"
+  },
+  {
+    "titulo": "Baldur's Gate 3",
+    "preco": 199.90,
+    "descricao": "RPG de turnos baseado em Dungeons & Dragons na Costa da Espada.",
+    "desenvolvedora": "Larian Studios",
+    "dataLancamento": "2023-08-03"
+  },
+  {
+    "titulo": "Elden Ring — Edição Colecionador",
+    "preco": 6500.00,
+    "descricao": "Edição física de colecionador com estatueta, artbook e trilha sonora.",
+    "desenvolvedora": "FromSoftware",
+    "dataLancamento": "2022-02-25"
+  }
+]
