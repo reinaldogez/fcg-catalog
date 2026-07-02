@@ -1,6 +1,4 @@
 using System.Net.Http.Headers;
-using Fcg.Catalog.Domain.Interfaces;
-using Fcg.Catalog.Domain.Services;
 using Fcg.Catalog.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
@@ -21,9 +19,6 @@ namespace Fcg.Catalog.Tests.Integration.Fixtures;
 // (Outbox provê o IPublishEndpoint escrevendo na OutboxMessage via DbContext); os hosted
 // services do MassTransit são removidos no host de teste — o sweeper do Outbox dá deadlock com
 // o reset de banco entre testes, e IBus/IPublishEndpoint seguem resolvíveis sem ele.
-//
-// IPedidoDomainService só ganha registro de produção mais adiante; aqui é provido localmente
-// para exercitar o endpoint de criação de pedido ponta a ponta.
 public class CatalogApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine")
@@ -56,8 +51,6 @@ public class CatalogApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
         builder.ConfigureTestServices(services =>
         {
-            services.AddScoped<IPedidoDomainService, PedidoDomainService>();
-
             // Sem os hosted services do MassTransit, o bus não sobe sozinho (evita o deadlock do
             // sweeper do Outbox com o reset de banco). O bus é iniciado sob demanda nos testes de
             // topologia; publish continua indo para a OutboxMessage via DbContext.
