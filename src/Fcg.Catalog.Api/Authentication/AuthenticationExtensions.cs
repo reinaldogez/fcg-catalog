@@ -37,10 +37,16 @@ public static class AuthenticationExtensions
                 options.MapInboundClaims = false;
 
                 // JWKS direto (não Authority/discovery OIDC — o identity não expõe openid-configuration).
+                // HTTPS exigido por default fora de Development; RequireHttpsMetadata=false permite
+                // JWKS por http quando o identity é alcançado por nome de serviço em rede interna.
                 options.ConfigurationManager = new ConfigurationManager<OpenIdConnectConfiguration>(
                     settings.JwksUri,
                     new JwksConfigurationRetriever(),
-                    new HttpDocumentRetriever { RequireHttps = !environment.IsDevelopment() }
+                    new HttpDocumentRetriever
+                    {
+                        RequireHttps =
+                            settings.RequireHttpsMetadata && !environment.IsDevelopment(),
+                    }
                 );
 
                 options.TokenValidationParameters = new TokenValidationParameters
