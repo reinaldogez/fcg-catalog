@@ -8,4 +8,8 @@ public class JwtSettings
     public string JwksUri { get; set; } = string.Empty;
     public string Issuer { get; set; } = string.Empty;
     public string Audience { get; set; } = string.Empty;
+
+    // Exigência de HTTPS na busca do JWKS. Default seguro (true); desligável por config
+    // quando o identity é alcançado por http em rede interna confiável (service-to-service).
+    public bool RequireHttpsMetadata { get; set; } = true;
 }
