@@ -303,3 +303,12 @@ dotnet_diagnostic.CA1849.severity = none
 [**/Migrations/*.cs]
 generated_code = true
 dotnet_diagnostic.IDE0161.severity = none
+
+# ============================================================================
+# Código gerado pelo Reqnroll (code-behind das features BDD)
+# ============================================================================
+[tests/Fcg.Catalog.Tests.Bdd/Features/**.feature.cs]
+generated_code = true
+# Warnings comuns em código gerado pelo Reqnroll (await ausente / variável não usada)
+dotnet_diagnostic.CS4014.severity = none
+dotnet_diagnostic.CS0219.severity = none
