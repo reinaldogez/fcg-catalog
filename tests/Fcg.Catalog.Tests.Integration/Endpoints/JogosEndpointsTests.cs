@@ -95,4 +95,106 @@ public class JogosEndpointsTests(CatalogApiFactory factory) : IntegrationTestBas
         );
         putInexistente.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
+
+    [Fact]
+    public async Task CriarJogoComDataSemSufixoDeFusoDevePersistirEmUtc()
+    {
+        HttpClient client = Factory.CreateAuthenticatedClient(JwtTestTokens.TokenAdmin());
+        var novo = new
+        {
+            titulo = "Stardew Valley",
+            preco = 24.90m,
+            dataLancamento = "2024-01-15",
+        };
+
+        HttpResponseMessage criacao = await client.PostAsJsonAsync("/api/jogos", novo);
+
+        criacao.StatusCode.Should().Be(HttpStatusCode.Created);
+        JogoResponse criado = (await criacao.Content.ReadFromJsonAsync<JogoResponse>())!;
+
+        HttpResponseMessage leitura = await client.GetAsync($"/api/jogos/{criado.Id}");
+        leitura.StatusCode.Should().Be(HttpStatusCode.OK);
+        JogoResponse lido = (await leitura.Content.ReadFromJsonAsync<JogoResponse>())!;
+        lido.DataLancamento.Should().Be(new DateTime(2024, 1, 15, 0, 0, 0, DateTimeKind.Utc));
+        lido.DataLancamento!.Value.Kind.Should().Be(DateTimeKind.Utc);
+    }
+
+    [Fact]
+    public async Task CriarJogoComESemSufixoDeFusoDevePersistirOMesmoInstante()
+    {
+        HttpClient client = Factory.CreateAuthenticatedClient(JwtTestTokens.TokenAdmin());
+
+        HttpResponseMessage criacaoSemSufixo = await client.PostAsJsonAsync(
+            "/api/jogos",
+            new
+            {
+                titulo = "Tunic",
+                preco = 39.90m,
+                dataLancamento = "2024-01-15",
+            }
+        );
+        HttpResponseMessage criacaoComSufixo = await client.PostAsJsonAsync(
+            "/api/jogos",
+            new
+            {
+                titulo = "Braid",
+                preco = 19.90m,
+                dataLancamento = "2024-01-15T00:00:00Z",
+            }
+        );
+
+        criacaoSemSufixo.StatusCode.Should().Be(HttpStatusCode.Created);
+        criacaoComSufixo.StatusCode.Should().Be(HttpStatusCode.Created);
+
+        JogoResponse semSufixo = (
+            await criacaoSemSufixo.Content.ReadFromJsonAsync<JogoResponse>()
+        )!;
+        JogoResponse comSufixo = (
+            await criacaoComSufixo.Content.ReadFromJsonAsync<JogoResponse>()
+        )!;
+
+        JogoResponse lidoSemSufixo = (
+            await (
+                await client.GetAsync($"/api/jogos/{semSufixo.Id}")
+            ).Content.ReadFromJsonAsync<JogoResponse>()
+        )!;
+        JogoResponse lidoComSufixo = (
+            await (
+                await client.GetAsync($"/api/jogos/{comSufixo.Id}")
+            ).Content.ReadFromJsonAsync<JogoResponse>()
+        )!;
+
+        lidoSemSufixo.DataLancamento.Should().Be(lidoComSufixo.DataLancamento);
+        lidoSemSufixo
+            .DataLancamento.Should()
+            .Be(new DateTime(2024, 1, 15, 0, 0, 0, DateTimeKind.Utc));
+    }
+
+    [Fact]
+    public async Task AtualizarJogoComDataSemSufixoDeFusoDevePersistirEmUtc()
+    {
+        HttpClient client = Factory.CreateAuthenticatedClient(JwtTestTokens.TokenAdmin());
+        HttpResponseMessage criacao = await client.PostAsJsonAsync(
+            "/api/jogos",
+            new { titulo = "Hades", preco = 44.90m }
+        );
+        JogoResponse criado = (await criacao.Content.ReadFromJsonAsync<JogoResponse>())!;
+
+        HttpResponseMessage put = await client.PutAsJsonAsync(
+            $"/api/jogos/{criado.Id}",
+            new
+            {
+                titulo = "Hades II",
+                preco = 49.90m,
+                dataLancamento = "2024-05-06",
+            }
+        );
+
+        put.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        HttpResponseMessage leitura = await client.GetAsync($"/api/jogos/{criado.Id}");
+        JogoResponse lido = (await leitura.Content.ReadFromJsonAsync<JogoResponse>())!;
+        lido.DataLancamento.Should().Be(new DateTime(2024, 5, 6, 0, 0, 0, DateTimeKind.Utc));
+        lido.DataLancamento!.Value.Kind.Should().Be(DateTimeKind.Utc);
+    }
 }
