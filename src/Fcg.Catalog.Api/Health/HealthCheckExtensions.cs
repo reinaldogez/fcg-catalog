@@ -7,8 +7,8 @@ namespace Fcg.Catalog.Api.Health;
 public static class HealthCheckExtensions
 {
     // /health/live  — liveness: só o self (sem dependências); falha → k8s reinicia o pod.
-    // /health/ready — readiness: só PostgreSQL (tag "ready"); falha → k8s tira do balanceamento.
-    //                 O broker fica fora do ready: o Outbox desacopla a entrega do broker.
+    // /health/ready — readiness: PostgreSQL e DynamoDB (tag "ready"); falha → k8s tira do
+    //                 balanceamento. O broker fica fora do ready: o Outbox desacopla a entrega.
     // /health       — agregado informativo de todos os checks registrados.
     public static IEndpointRouteBuilder MapCatalogHealthChecks(this IEndpointRouteBuilder endpoints)
     {

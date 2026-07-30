@@ -17,6 +17,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.5" />
     <PackageReference Include="Testcontainers.PostgreSql" Version="4.12.0" />
     <PackageReference Include="Testcontainers.RabbitMq" Version="4.12.0" />
+    <PackageReference Include="Testcontainers.DynamoDb" Version="4.12.0" />
   </ItemGroup>
 
   <ItemGroup>

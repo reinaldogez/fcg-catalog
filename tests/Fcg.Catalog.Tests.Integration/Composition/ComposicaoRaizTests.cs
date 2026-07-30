@@ -95,6 +95,9 @@ public class ComposicaoRaizTests
             ["RabbitMq:Host"] = "localhost",
             ["RabbitMq:Username"] = "guest",
             ["RabbitMq:Password"] = "guest",
+            // Sem ServiceUrl, que é a forma da nuvem: o cliente do read model não é construído
+            // aqui, então nada tenta resolver endpoint regional nem credencial.
+            ["DynamoDb:TableName"] = "biblioteca",
         };
 
         foreach ((string chave, string valor) in extras)
