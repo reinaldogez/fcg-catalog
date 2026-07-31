@@ -1,5 +1,6 @@
 using Amazon.DynamoDBv2;
 using Amazon.Runtime;
+using Fcg.Catalog.Application.Abstractions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -22,6 +23,19 @@ public static class DynamoDbExtensions
 
         services.AddSingleton<IAmazonDynamoDB>(_ => CriarCliente(settings));
         services.AddSingleton<DynamoDbTableBootstrap>();
+
+        // As duas portas resolvem a mesma instância: a classe não guarda estado e suas duas
+        // dependências já são singleton, então um objeto por escopo não compraria nada.
+        services.AddSingleton(sp => new DynamoDbBibliotecaStore(
+            sp.GetRequiredService<IAmazonDynamoDB>(),
+            sp.GetRequiredService<DynamoDbSettings>()
+        ));
+        services.AddSingleton<IBibliotecaReadModel>(sp =>
+            sp.GetRequiredService<DynamoDbBibliotecaStore>()
+        );
+        services.AddSingleton<IProjecaoBiblioteca>(sp =>
+            sp.GetRequiredService<DynamoDbBibliotecaStore>()
+        );
 
         return services;
     }
