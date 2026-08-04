@@ -1,0 +1,13 @@
+title = "gitleaks config — fcg-catalog"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Falsos positivos confirmados: material de teste, nunca segredo de runtime"
+regexes = [
+  '''fcg-catalog-test-key''',
+]
+paths = [
+  '''tests/Fcg\.Catalog\.Tests\.Integration/Fixtures/JwtTestTokens\.cs''',
+]
