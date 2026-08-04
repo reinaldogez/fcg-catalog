@@ -21,6 +21,7 @@ public static class DependencyInjection
         services.AddScoped<RejeitarPedidoUseCase>();
 
         services.AddScoped<ObterBibliotecaDoUsuarioUseCase>();
+        services.AddScoped<ProjetarItemBibliotecaUseCase>();
 
         return services;
     }

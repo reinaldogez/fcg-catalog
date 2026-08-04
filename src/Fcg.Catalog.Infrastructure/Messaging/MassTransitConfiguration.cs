@@ -26,6 +26,7 @@ public static class MassTransitConfiguration
             });
 
             x.AddConsumer<PaymentProcessedConsumer>();
+            x.AddConsumer<PaymentProcessedProjectionConsumer>();
 
             x.UsingRabbitMq(
                 (context, cfg) =>
@@ -89,6 +90,42 @@ public static class MassTransitConfiguration
                             // mesmo CatalogDbContext scoped — o commit é do harness, não do use case.
                             e.UseEntityFrameworkOutbox<CatalogDbContext>(context);
                             e.ConfigureConsumer<PaymentProcessedConsumer>(context);
+                        }
+                    );
+
+                    // Fila própria para a projeção, com bind na mesma exchange: o caminho de falha
+                    // fica independente do crédito na fonte da verdade.
+                    cfg.ReceiveEndpoint(
+                        "payment-processed.fcg-catalog-projections",
+                        e =>
+                        {
+                            // Sem Inbox, de propósito. O Inbox protege efeito não-idempotente, e o
+                            // desta fila é idempotente por construção: todo atributo do item é
+                            // função pura do evento, então reentrega reescreve o mesmo item.
+                            // Declará-lo abriria transação no PostgreSQL num consumer que não
+                            // escreve uma linha nele — e sem atomicidade real, já que a escrita no
+                            // read model fica fora dessa transação de qualquer forma.
+                            //
+                            // Retry curto porque a dependência é remota: throttling, renovação de
+                            // credencial e reset de TLS se resolvem sozinhos em segundos. O
+                            // endpoint de crédito acima não repete porque fala com o banco do
+                            // próprio cluster, onde a falha é sistêmica ou determinística e
+                            // repetir em seis segundos não muda o desfecho. Esgotadas as
+                            // tentativas, a mensagem vai para a fila de erro do broker.
+                            //
+                            // Sem limite de concorrência: a projeção é ordem-independente — cada
+                            // item tem chave própria, sem agregação e sem contador.
+                            e.UseMessageRetry(r =>
+                            {
+                                r.Interval(3, TimeSpan.FromSeconds(2));
+
+                                // Evento malformado é falha determinística: repetir não muda o
+                                // desfecho e só atrasa a ida para a fila de erro.
+                                r.Ignore<ArgumentException>();
+                                r.Ignore<FormatException>();
+                            });
+
+                            e.ConfigureConsumer<PaymentProcessedProjectionConsumer>(context);
                         }
                     );
                 }
