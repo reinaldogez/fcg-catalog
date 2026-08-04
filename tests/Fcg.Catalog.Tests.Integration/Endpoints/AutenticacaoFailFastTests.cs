@@ -25,6 +25,8 @@ public class AutenticacaoFailFastTests
                     "ConnectionStrings:Catalog",
                     "Host=localhost;Database=fail;Username=u;Password=p"
                 );
+                // Passa o fail-fast do read model pela mesma razão: o alvo é a validação do Jwt.
+                builder.UseSetting("DynamoDb:TableName", "biblioteca");
                 builder.UseSetting("Jwt:JwksUri", "");
                 builder.UseSetting("Jwt:Issuer", "");
                 builder.UseSetting("Jwt:Audience", "");

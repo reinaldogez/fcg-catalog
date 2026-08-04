@@ -5,6 +5,7 @@ using Fcg.Catalog.Application.UseCases.Pedidos;
 using Fcg.Catalog.Infrastructure;
 using Fcg.Catalog.Infrastructure.Seed;
 using FluentAssertions;
+using MassTransit;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -23,19 +24,7 @@ public class ComposicaoRaizTests
     [Fact]
     public async Task GrafoDeProducaoResolveTodosOsUseCasesSemSupridoresDeTeste()
     {
-        IConfiguration configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(
-                new Dictionary<string, string?>
-                {
-                    // Strings quaisquer: só a construção do grafo é exercitada, nada conecta.
-                    ["ConnectionStrings:Catalog"] =
-                        "Host=localhost;Database=catalog;Username=u;Password=p",
-                    ["RabbitMq:Host"] = "localhost",
-                    ["RabbitMq:Username"] = "guest",
-                    ["RabbitMq:Password"] = "guest",
-                }
-            )
-            .Build();
+        IConfiguration configuration = ConfiguracaoMinima();
 
         ServiceCollection services = new();
         services.AddLogging();
@@ -71,5 +60,51 @@ public class ComposicaoRaizTests
         };
 
         resolver.Should().NotThrow();
+    }
+
+    // Com TLS ligado, a configuração do host muda mas nada conecta: o bus continua lazy. Prova que
+    // a chave não quebra a composição-raiz — o handshake em si só é exercível contra o broker real.
+    [Fact]
+    public async Task GrafoDeProducaoCompoeComSslHabilitado()
+    {
+        IConfiguration configuration = ConfiguracaoMinima(("RabbitMq:UseSsl", "true"));
+
+        ServiceCollection services = new();
+        services.AddLogging();
+        services.AddApplication();
+
+        Action compor = () => services.AddInfrastructure(configuration);
+        compor.Should().NotThrow();
+
+        await using ServiceProvider provider = services.BuildServiceProvider(
+            new ServiceProviderOptions { ValidateScopes = true }
+        );
+        await using AsyncServiceScope scope = provider.CreateAsyncScope();
+
+        Action resolverBus = () => scope.ServiceProvider.GetRequiredService<IBusControl>();
+
+        resolverBus.Should().NotThrow();
+    }
+
+    private static IConfiguration ConfiguracaoMinima(params (string Chave, string Valor)[] extras)
+    {
+        // Strings quaisquer: só a construção do grafo é exercitada, nada conecta.
+        Dictionary<string, string?> entradas = new()
+        {
+            ["ConnectionStrings:Catalog"] = "Host=localhost;Database=catalog;Username=u;Password=p",
+            ["RabbitMq:Host"] = "localhost",
+            ["RabbitMq:Username"] = "guest",
+            ["RabbitMq:Password"] = "guest",
+            // Sem ServiceUrl, que é a forma da nuvem: o cliente do read model não é construído
+            // aqui, então nada tenta resolver endpoint regional nem credencial.
+            ["DynamoDb:TableName"] = "biblioteca",
+        };
+
+        foreach ((string chave, string valor) in extras)
+        {
+            entradas[chave] = valor;
+        }
+
+        return new ConfigurationBuilder().AddInMemoryCollection(entradas).Build();
     }
 }

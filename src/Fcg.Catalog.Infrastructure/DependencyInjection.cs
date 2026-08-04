@@ -1,5 +1,6 @@
 using Fcg.Catalog.Domain.Interfaces;
 using Fcg.Catalog.Domain.Services;
+using Fcg.Catalog.Infrastructure.DynamoDb;
 using Fcg.Catalog.Infrastructure.Messaging;
 using Fcg.Catalog.Infrastructure.Persistence;
 using Fcg.Catalog.Infrastructure.Persistence.Repositories;
@@ -43,6 +44,10 @@ public static class DependencyInjection
 
         // Seeder do catálogo inicial — resolvido pelo Job (--seed); no boot normal fica ocioso.
         services.AddScoped<CatalogSeeder>();
+
+        // Armazenamento do read model da biblioteca — extensão própria, no mesmo padrão da
+        // mensageria: falha na composição se o nome da tabela não estiver configurado.
+        services.AddCatalogReadModelStore(configuration);
 
         services.AddCatalogMessaging(configuration);
 

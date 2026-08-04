@@ -7,6 +7,7 @@ using Fcg.Catalog.Api.Observability;
 using Fcg.Catalog.Api.OpenApi;
 using Fcg.Catalog.Application;
 using Fcg.Catalog.Infrastructure;
+using Fcg.Catalog.Infrastructure.DynamoDb;
 using Fcg.Catalog.Infrastructure.Persistence;
 using Fcg.Catalog.Infrastructure.Seed;
 using Microsoft.AspNetCore.RateLimiting;
@@ -54,7 +55,12 @@ builder.Services.AddRateLimiter(options =>
     );
 });
 
-builder.Services.AddHealthChecks().AddDbContextCheck<CatalogDbContext>("postgres", tags: ["ready"]);
+builder
+    .Services.AddHealthChecks()
+    .AddDbContextCheck<CatalogDbContext>("postgres", tags: ["ready"])
+    // O read model entra no readiness: sem ele o endpoint de biblioteca não tem o que responder,
+    // e não há desacoplamento por fila como no caminho do broker.
+    .AddCheck<DynamoDbHealthCheck>("dynamodb", tags: ["ready"]);
 
 WebApplication app = builder.Build();
 
@@ -71,6 +77,26 @@ if (args.Contains("--migrate") || args.Contains("--seed"))
         await scope.ServiceProvider.GetRequiredService<CatalogSeeder>().SeedAsync();
 
     return;
+}
+
+// Cria a tabela do read model quando há endpoint local configurado. Na nuvem ela é provisionada
+// fora deste serviço, e o bloco é inerte por não haver ServiceUrl. Endpoint fora do ar não derruba
+// o processo: quem reporta dependência indisponível é a prontidão, e ela só reporta com o processo
+// de pé. O teto impede que a cadeia de retry do SDK segure o start.
+await using (AsyncServiceScope escopo = app.Services.CreateAsyncScope())
+{
+    using CancellationTokenSource cts = new(TimeSpan.FromSeconds(10));
+
+    try
+    {
+        await escopo
+            .ServiceProvider.GetRequiredService<DynamoDbTableBootstrap>()
+            .GarantirTabelaAsync(cts.Token);
+    }
+    catch (Exception excecao)
+    {
+        app.Logger.LogWarning(excecao, "Tabela do read model não pôde ser garantida no boot.");
+    }
 }
 
 app.UseSerilogRequestLogging();
