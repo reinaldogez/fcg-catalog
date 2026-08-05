@@ -1,6 +1,7 @@
 using Fcg.Catalog.Application.Abstractions;
 using Fcg.Catalog.Domain.Interfaces;
 using Fcg.Catalog.Domain.Services;
+using Fcg.Catalog.Infrastructure.Cache;
 using Fcg.Catalog.Infrastructure.DynamoDb;
 using Fcg.Catalog.Infrastructure.Messaging;
 using Fcg.Catalog.Infrastructure.Persistence;
@@ -52,6 +53,10 @@ public static class DependencyInjection
         // Armazenamento do read model da biblioteca — extensão própria, no mesmo padrão da
         // mensageria: falha na composição se o nome da tabela não estiver configurado.
         services.AddCatalogReadModelStore(configuration);
+
+        // Cache do catálogo — config-gated: sem host de Redis a extensão registra o pass-through
+        // e a aplicação sobe sem cache, em vez de falhar por dependência opcional ausente.
+        services.AddCatalogCache(configuration);
 
         services.AddCatalogMessaging(configuration);
 

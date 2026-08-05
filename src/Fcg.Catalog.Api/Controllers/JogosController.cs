@@ -4,6 +4,7 @@ using Fcg.Catalog.Application.UseCases.Jogos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Serilog;
 
 namespace Fcg.Catalog.Api.Controllers;
 
@@ -16,9 +17,18 @@ public class JogosController(
     ListarJogosUseCase listarJogos,
     ObterJogoPorIdUseCase obterJogoPorId,
     AtualizarJogoUseCase atualizarJogo,
-    DesativarJogoUseCase desativarJogo
+    DesativarJogoUseCase desativarJogo,
+    IDiagnosticContext diagnosticContext
 ) : ControllerBase
 {
+    // Propriedade estruturada da linha única que o log de requisição emite, ao lado do tempo
+    // decorrido: é o que torna a diferença de latência entre acerto e falta legível lado a lado.
+    private const string PropriedadeDeCache = "cacheResultado";
+
+    private const string Acerto = "hit";
+
+    private const string Falta = "miss";
+
     [HttpPost]
     [Authorize(Policy = AuthorizationPolicies.AdminOnly)]
     [ProducesResponseType(typeof(JogoResponse), StatusCodes.Status201Created)]
@@ -39,10 +49,11 @@ public class JogosController(
         CancellationToken cancellationToken
     )
     {
-        IReadOnlyList<JogoResponse> jogos = await listarJogos.ExecutarAsync(
-            request,
-            cancellationToken
-        );
+        (IReadOnlyList<JogoResponse> jogos, ResultadoDeCache cache) =
+            await listarJogos.ExecutarAsync(request, cancellationToken);
+
+        RegistrarResultadoDeCache(cache);
+
         return Ok(jogos);
     }
 
@@ -51,7 +62,13 @@ public class JogosController(
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ObterPorIdAsync(Guid id, CancellationToken cancellationToken)
     {
-        JogoResponse? jogo = await obterJogoPorId.ExecutarAsync(id, cancellationToken);
+        (JogoResponse? jogo, ResultadoDeCache cache) = await obterJogoPorId.ExecutarAsync(
+            id,
+            cancellationToken
+        );
+
+        RegistrarResultadoDeCache(cache);
+
         return jogo is null ? NotFound() : Ok(jogo);
     }
 
@@ -78,4 +95,10 @@ public class JogosController(
         bool existia = await desativarJogo.ExecutarAsync(id, cancellationToken);
         return existia ? NoContent() : NotFound();
     }
+
+    private void RegistrarResultadoDeCache(ResultadoDeCache resultado) =>
+        diagnosticContext.Set(
+            PropriedadeDeCache,
+            resultado == ResultadoDeCache.Hit ? Acerto : Falta
+        );
 }
