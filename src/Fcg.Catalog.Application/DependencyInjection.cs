@@ -23,6 +23,10 @@ public static class DependencyInjection
         services.AddScoped<ObterBibliotecaDoUsuarioUseCase>();
         services.AddScoped<ProjetarItemBibliotecaUseCase>();
 
+        // Reconstrução do modelo de leitura — resolvida pelo Job (--reprojetar); no boot normal
+        // fica ociosa, como o seeder.
+        services.AddScoped<ReprojetarBibliotecaUseCase>();
+
         return services;
     }
 }
