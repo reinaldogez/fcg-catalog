@@ -57,6 +57,10 @@ public class ComposicaoRaizTests
             sp.GetRequiredService<ObterBibliotecaDoUsuarioUseCase>();
 
             sp.GetRequiredService<CatalogSeeder>();
+
+            // Alvo da outra flag do Job: sem registro de produção da fonte de reconstrução, o
+            // --reprojetar só falharia no cluster.
+            sp.GetRequiredService<ReprojetarBibliotecaUseCase>();
         };
 
         resolver.Should().NotThrow();

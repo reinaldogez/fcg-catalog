@@ -35,7 +35,7 @@ jobs:
             --configfile "$RUNNER_TEMP/nuget.config"
           dotnet restore --configfile "$RUNNER_TEMP/nuget.config"
       - run: dotnet build --no-restore -c Release
-      # Testcontainers usa o Docker já presente no runner para subir PostgreSQL + RabbitMQ + DynamoDB local
+      # Testcontainers usa o Docker já presente no runner para subir PostgreSQL + RabbitMQ + DynamoDB local + Redis
       - run: |
           dotnet test --no-build -c Release \
             --collect:"XPlat Code Coverage" \

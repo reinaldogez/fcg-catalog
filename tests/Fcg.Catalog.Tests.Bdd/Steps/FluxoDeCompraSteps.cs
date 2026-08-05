@@ -97,8 +97,14 @@ public class FluxoDeCompraSteps(HttpClient client, CenarioEstado estado, IBus bu
     [Then(@"o jogo aparece na biblioteca do usuario")]
     public async Task EntaoOJogoApareceNaBibliotecaDoUsuario()
     {
-        IReadOnlyList<ItemBibliotecaResponse> itens = await ObterBibliotecaAsync();
-        itens.Should().ContainSingle(item => item.JogoId == estado.JogoId);
+        // A biblioteca é servida pelo modelo de leitura, alimentado por uma fila própria: o pedido
+        // pode chegar a Aprovado antes de a projeção processar o mesmo evento. Poll até a janela
+        // de consistência fechar, no mesmo espírito do poll sobre o status do pedido.
+        bool apareceu = await AguardarAsync(async () =>
+            (await ObterBibliotecaAsync()).Any(item => item.JogoId == estado.JogoId)
+        );
+
+        apareceu.Should().BeTrue("o jogo deveria aparecer na biblioteca dentro do timeout");
     }
 
     [Then(@"a biblioteca do usuario nao contem o jogo")]
@@ -141,6 +147,18 @@ public class FluxoDeCompraSteps(HttpClient client, CenarioEstado estado, IBus bu
         >(s_jsonOptions);
         itens.Should().NotBeNull();
         return itens!;
+    }
+
+    private static async Task<bool> AguardarAsync(Func<Task<bool>> condicao)
+    {
+        DateTime limite = DateTime.UtcNow + s_timeout;
+        while (DateTime.UtcNow < limite)
+        {
+            if (await condicao())
+                return true;
+            await Task.Delay(200);
+        }
+        return false;
     }
 
     // Poll no GET do pedido (o polling é o contrato do 202) até a condição valer ou o timeout

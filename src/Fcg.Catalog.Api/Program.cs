@@ -6,6 +6,7 @@ using Fcg.Catalog.Api.Middleware;
 using Fcg.Catalog.Api.Observability;
 using Fcg.Catalog.Api.OpenApi;
 using Fcg.Catalog.Application;
+using Fcg.Catalog.Application.UseCases.Biblioteca;
 using Fcg.Catalog.Infrastructure;
 using Fcg.Catalog.Infrastructure.DynamoDb;
 using Fcg.Catalog.Infrastructure.Persistence;
@@ -64,9 +65,10 @@ builder
 
 WebApplication app = builder.Build();
 
-// Modo Job: o mesmo binário aplica migrations e/ou semeia e encerra sem subir o host web.
-// Flags independentes e combináveis; ordem migrate→seed forçada aqui, não pela ordem dos args.
-if (args.Contains("--migrate") || args.Contains("--seed"))
+// Modo Job: o mesmo binário aplica migrations, semeia e/ou reconstrói o modelo de leitura da
+// biblioteca, e encerra sem subir o host web. Flags independentes e combináveis; a ordem
+// migrate→seed→reprojetar é forçada aqui, não pela ordem dos args.
+if (args.Contains("--migrate") || args.Contains("--seed") || args.Contains("--reprojetar"))
 {
     using IServiceScope scope = app.Services.CreateScope();
 
@@ -75,6 +77,11 @@ if (args.Contains("--migrate") || args.Contains("--seed"))
 
     if (args.Contains("--seed"))
         await scope.ServiceProvider.GetRequiredService<CatalogSeeder>().SeedAsync();
+
+    if (args.Contains("--reprojetar"))
+        await scope
+            .ServiceProvider.GetRequiredService<ReprojetarBibliotecaUseCase>()
+            .ExecutarAsync();
 
     return;
 }

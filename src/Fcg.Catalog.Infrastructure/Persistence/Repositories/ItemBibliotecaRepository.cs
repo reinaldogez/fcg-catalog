@@ -16,16 +16,6 @@ public class ItemBibliotecaRepository(CatalogDbContext contexto) : IItemBibliote
             cancellationToken
         );
 
-    public async Task<IReadOnlyList<ItemBiblioteca>> ListarPorUsuarioAsync(
-        Guid usuarioId,
-        CancellationToken cancellationToken = default
-    ) =>
-        await contexto
-            .ItensBiblioteca.AsNoTracking()
-            .Where(i => i.UsuarioId == usuarioId)
-            .OrderByDescending(i => i.AdicionadoEm)
-            .ToListAsync(cancellationToken);
-
     public async Task AdicionarAsync(
         ItemBiblioteca item,
         CancellationToken cancellationToken = default

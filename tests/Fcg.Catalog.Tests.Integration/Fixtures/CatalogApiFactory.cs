@@ -45,6 +45,9 @@ public class CatalogApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     // Exposto para os testes que precisam falar com a instância local por fora do host.
     public string DynamoDbServiceUrl => _dynamoDb.GetConnectionString();
 
+    // Exposto pela mesma razão: inspecionar fila do broker por fora do bus da aplicação.
+    public string RabbitMqConnectionString => _rabbitMq.GetConnectionString();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         // Satisfaz o fail-fast de connection string do startup e aponta o DbContext ao container.

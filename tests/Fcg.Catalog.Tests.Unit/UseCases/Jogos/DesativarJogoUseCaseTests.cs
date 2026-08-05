@@ -1,3 +1,4 @@
+using Fcg.Catalog.Application.Abstractions;
 using Fcg.Catalog.Application.UseCases.Jogos;
 using Fcg.Catalog.Domain.Entities;
 using Fcg.Catalog.Domain.Interfaces;
@@ -12,10 +13,15 @@ public class DesativarJogoUseCaseTests
 {
     private readonly Mock<IJogoRepository> _jogoRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
+    private readonly Mock<ICacheCatalogo> _cacheCatalogo = new();
     private readonly DesativarJogoUseCase _useCase;
 
     public DesativarJogoUseCaseTests() =>
-        _useCase = new DesativarJogoUseCase(_jogoRepository.Object, _unitOfWork.Object);
+        _useCase = new DesativarJogoUseCase(
+            _jogoRepository.Object,
+            _unitOfWork.Object,
+            _cacheCatalogo.Object
+        );
 
     [Fact]
     public async Task DeveDesativarChamarAtualizarEComitar()
@@ -48,5 +54,42 @@ public class DesativarJogoUseCaseTests
             u => u.SalvarAlteracoesAsync(It.IsAny<CancellationToken>()),
             Times.Never
         );
+
+        // Sem escrita não há o que invalidar, e subir a versão à toa descartaria toda página viva.
+        _cacheCatalogo.Verify(
+            c => c.InvalidarListagemAsync(It.IsAny<CancellationToken>()),
+            Times.Never
+        );
+        _cacheCatalogo.Verify(
+            c => c.InvalidarDetalheAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
+            Times.Never
+        );
+    }
+
+    [Fact]
+    public async Task DeveInvalidarListagemEDetalheDepoisDoCommit()
+    {
+        var jogo = Jogo.Criar(Titulo.Criar("Gris"), Preco.Criar(45m));
+        _jogoRepository
+            .Setup(r => r.ObterPorIdAsync(jogo.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(jogo);
+
+        List<string> ordem = [];
+        _unitOfWork
+            .Setup(u => u.SalvarAlteracoesAsync(It.IsAny<CancellationToken>()))
+            .Callback(() => ordem.Add("commit"))
+            .Returns(Task.CompletedTask);
+        _cacheCatalogo
+            .Setup(c => c.InvalidarListagemAsync(It.IsAny<CancellationToken>()))
+            .Callback(() => ordem.Add("listagem"))
+            .Returns(Task.CompletedTask);
+        _cacheCatalogo
+            .Setup(c => c.InvalidarDetalheAsync(jogo.Id, It.IsAny<CancellationToken>()))
+            .Callback(() => ordem.Add("detalhe"))
+            .Returns(Task.CompletedTask);
+
+        await _useCase.ExecutarAsync(jogo.Id, CancellationToken.None);
+
+        ordem.Should().Equal("commit", "listagem", "detalhe");
     }
 }
