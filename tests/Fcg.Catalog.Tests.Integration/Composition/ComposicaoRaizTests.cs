@@ -99,9 +99,12 @@ public class ComposicaoRaizTests
             ["RabbitMq:Host"] = "localhost",
             ["RabbitMq:Username"] = "guest",
             ["RabbitMq:Password"] = "guest",
-            // Sem ServiceUrl, que é a forma da nuvem: o cliente do read model não é construído
-            // aqui, então nada tenta resolver endpoint regional nem credencial.
             ["DynamoDb:TableName"] = "biblioteca",
+            // ServiceUrl presente desvia para o ramo local, que embute região de assinatura e
+            // credencial falsa. Sem ele, a construção do cliente exigiria região do ambiente, que
+            // existe no cluster mas não em runner nem em máquina limpa. Nada conecta: só o
+            // construtor roda, e a credencial só seria resolvida na primeira chamada de rede.
+            ["DynamoDb:ServiceUrl"] = "http://localhost:8000",
         };
 
         foreach ((string chave, string valor) in extras)
