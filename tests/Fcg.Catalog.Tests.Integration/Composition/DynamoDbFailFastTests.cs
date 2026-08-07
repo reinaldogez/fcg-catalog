@@ -6,6 +6,7 @@ using FluentAssertions;
 using MassTransit;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -48,5 +49,49 @@ public class DynamoDbFailFastTests
             .Which.ToString()
             .Should()
             .Contain(DynamoDbSettings.ChaveTableName);
+    }
+
+    // A decisão de endpoint é asserível sem construir cliente: ausência de ServiceUrl é a forma da
+    // nuvem, onde região e credencial vêm do ambiente do pod. A composição-raiz não exercita este
+    // ramo, porque supre ServiceUrl para não depender de ambiente AWS no runner.
+    [Fact]
+    public void ServiceUrlAusenteDeveIndicarRamoDeNuvem()
+    {
+        DynamoDbSettings settings = LerSettings(serviceUrl: null);
+
+        settings.UsaEndpointLocal.Should().BeFalse();
+        settings.ServiceUrl.Should().BeNull();
+    }
+
+    [Fact]
+    public void ServiceUrlPresenteDeveIndicarRamoLocal()
+    {
+        DynamoDbSettings settings = LerSettings(serviceUrl: "http://dynamodb-local:8000");
+
+        settings.UsaEndpointLocal.Should().BeTrue();
+        settings.ServiceUrl.Should().Be("http://dynamodb-local:8000");
+    }
+
+    // Valor em branco é a forma que o ConfigMap da nuvem assume, e precisa contar como ausência.
+    [Fact]
+    public void ServiceUrlEmBrancoDeveIndicarRamoDeNuvem()
+    {
+        DynamoDbSettings settings = LerSettings(serviceUrl: "   ");
+
+        settings.UsaEndpointLocal.Should().BeFalse();
+        settings.ServiceUrl.Should().BeNull();
+    }
+
+    private static DynamoDbSettings LerSettings(string? serviceUrl)
+    {
+        Dictionary<string, string?> entradas = new()
+        {
+            [DynamoDbSettings.ChaveTableName] = "biblioteca",
+            [DynamoDbSettings.ChaveServiceUrl] = serviceUrl,
+        };
+
+        return DynamoDbSettings.Ler(
+            new ConfigurationBuilder().AddInMemoryCollection(entradas).Build()
+        );
     }
 }
