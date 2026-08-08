@@ -5,6 +5,7 @@ using Fcg.Catalog.Tests.Integration.Fixtures;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using StackExchange.Redis;
 using Xunit;
 
 namespace Fcg.Catalog.Tests.Integration.Cache;
@@ -43,6 +44,19 @@ public class CacheCatalogoRedisTests : IClassFixture<RedisFixture>, IAsyncLifeti
     public Task InitializeAsync() => _redis.LimparAsync();
 
     public async Task DisposeAsync() => await _provider.DisposeAsync();
+
+    // A conexão que a instrumentação usa é a do container, e ela precisa servir enquanto o
+    // processo vive: é nela que o profiler é registrado, e só os comandos feitos por ela
+    // viram span.
+    [Fact]
+    public async Task ConexaoDoContainerDeveServirDuranteAVidaDoProcesso()
+    {
+        IConnectionMultiplexer conexao = _provider.GetRequiredService<IConnectionMultiplexer>();
+
+        await _cache.GravarDetalheAsync(Jogo("Jogo observado"));
+
+        conexao.IsConnected.Should().BeTrue();
+    }
 
     [Fact]
     public async Task PaginasDistintasDevemProduzirChavesDistintasSemContaminacao()

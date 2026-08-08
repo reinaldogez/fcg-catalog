@@ -19,11 +19,16 @@
 
   <ItemGroup>
     <!-- Telemetria config-gated: OTLP para traces+metricas; instrumenta HTTP de entrada
-         (AspNetCore), HTTP de saida (JWKS do identity) e o bus (source/meter MassTransit). -->
+         (AspNetCore), HTTP de saida (JWKS do identity), o bus (source/meter MassTransit),
+         o banco (Npgsql) e o cache (StackExchange.Redis). -->
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.16.0" />
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.16.0" />
     <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.15.2" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.16.0" />
+    <PackageReference Include="Npgsql.OpenTelemetry" Version="10.0.3" />
+    <!-- Sem versao estavel publicada: a instrumentacao de Redis so existe em pre-release,
+         porque a convencao semantica de banco que ela segue ainda e experimental. -->
+    <PackageReference Include="OpenTelemetry.Instrumentation.StackExchangeRedis" Version="1.17.0-beta.1" />
   </ItemGroup>
 
   <ItemGroup>

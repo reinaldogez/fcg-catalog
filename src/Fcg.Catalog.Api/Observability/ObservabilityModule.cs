@@ -45,20 +45,37 @@ public static class ObservabilityModule
         );
 
         // OTLP (traces/metrics) so com endpoint configurado. Instrumenta HTTP de entrada
-        // (AspNetCore), HTTP de saida (JWKS do identity) e o bus — MassTransit como source
-        // (trace bilateral: encadeia publish e consume pelo TraceId via headers AMQP) e meter.
+        // (AspNetCore), HTTP de saida (JWKS do identity), o bus — MassTransit como source
+        // (trace bilateral: encadeia publish e consume pelo TraceId via headers AMQP) e meter —
+        // mais o banco e o cache.
         if (!string.IsNullOrWhiteSpace(otelEndpoint))
         {
             builder
                 .Services.AddOpenTelemetry()
                 .ConfigureResource(resource => resource.AddService(ServiceName))
                 .WithTracing(tracing =>
+                {
                     tracing
                         .AddAspNetCoreInstrumentation()
                         .AddHttpClientInstrumentation()
-                        .AddSource("MassTransit")
-                        .AddOtlpExporter(exporter => exporter.Endpoint = new Uri(otelEndpoint))
-                )
+                        .AddSource("MassTransit");
+
+                    // Chamada pelo tipo declarante: como extensão, o nome colide com o
+                    // AddNpgsql do EF Core, que registra contexto e exige connection string.
+                    Npgsql.TracerProviderBuilderExtensions.AddNpgsql(tracing);
+
+                    // A conexão vem do container — é a mesma que o cache distribuído usa, e o
+                    // profiler só enxerga as chamadas feitas por ela.
+                    //
+                    // Texto do comando fora do span de propósito, nas duas instrumentações: o
+                    // padrão do Npgsql já é não emitir, e aqui o desligamento é explícito
+                    // porque o comando carrega valor de chave e de argumento.
+                    tracing.AddRedisInstrumentation(options =>
+                        options.SetVerboseDatabaseStatements = false
+                    );
+
+                    tracing.AddOtlpExporter(exporter => exporter.Endpoint = new Uri(otelEndpoint));
+                })
                 .WithMetrics(metrics =>
                     metrics
                         .AddAspNetCoreInstrumentation()

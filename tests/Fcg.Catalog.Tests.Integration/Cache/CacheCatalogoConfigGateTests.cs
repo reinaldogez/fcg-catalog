@@ -4,6 +4,7 @@ using Fcg.Catalog.Infrastructure.Cache;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using StackExchange.Redis;
 using Xunit;
 
 namespace Fcg.Catalog.Tests.Integration.Cache;
@@ -44,6 +45,29 @@ public class CacheCatalogoConfigGateTests
         provider.GetRequiredService<ICacheCatalogo>().Should().BeOfType<CacheCatalogoRedis>();
     }
 
+    // A instrumentação de Redis registra o profiler na conexão que resolve do container, e só
+    // instrumenta chamadas feitas por ela. Conexão registrada é o que separa span emitido de
+    // span ausente, e a ausência não quebra teste algum — por isso a composição é asserida aqui.
+    // Asserido no descritor, e não resolvendo do provider: resolver conectaria de fato, e o
+    // endereço aqui não existe.
+    [Fact]
+    public void ComHostAConexaoDeveSerRegistradaComoSingleton()
+    {
+        ServiceDescriptor? conexao = Descrever(
+            new Dictionary<string, string?>
+            {
+                [RedisSettings.ChaveHost] = "redis.local",
+                [RedisSettings.ChavePort] = "6380",
+            }
+        );
+
+        conexao.Should().NotBeNull("a instrumentação resolve a conexão do container");
+        conexao!.Lifetime.Should().Be(ServiceLifetime.Singleton);
+    }
+
+    [Fact]
+    public void SemHostNaoDeveRegistrarConexao() => Descrever([]).Should().BeNull();
+
     [Fact]
     public void PortaIlegivelDeveSerRecusada()
     {
@@ -60,6 +84,19 @@ public class CacheCatalogoConfigGateTests
         Action ler = () => RedisSettings.Ler(configuration);
 
         ler.Should().Throw<InvalidOperationException>().WithMessage("*Redis:Port*");
+    }
+
+    private static ServiceDescriptor? Descrever(Dictionary<string, string?> entradas)
+    {
+        ServiceCollection services = new();
+        services.AddLogging();
+        services.AddCatalogCache(
+            new ConfigurationBuilder().AddInMemoryCollection(entradas).Build()
+        );
+
+        return services.FirstOrDefault(descritor =>
+            descritor.ServiceType == typeof(IConnectionMultiplexer)
+        );
     }
 
     private static ServiceProvider Compor(Dictionary<string, string?> entradas)
