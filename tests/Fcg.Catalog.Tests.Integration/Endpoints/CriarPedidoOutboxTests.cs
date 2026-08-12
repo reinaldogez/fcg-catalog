@@ -62,6 +62,85 @@ public class CriarPedidoOutboxTests(CatalogApiFactory factory) : IntegrationTest
     }
 
     [Fact]
+    public async Task FatEventCarregaEmailENomeDoUsuarioVindosDasClaims()
+    {
+        // As claims 'email'/'name' chegam do identity em forma curta; o fat event tem de sair com
+        // as duas preenchidas, senão a notificação de compra vai sem destinatário e sem saudação.
+        HttpClient client = Factory.CreateAuthenticatedClient(
+            JwtTestTokens.TokenAdmin(email: "bruna@fcg.test", nome: "Bruna Lima")
+        );
+        var novoJogo = new { titulo = "Outer Wilds", preco = 6200.00m };
+        HttpResponseMessage criacaoJogo = await client.PostAsJsonAsync("/api/jogos", novoJogo);
+        JogoResponse jogo = (await criacaoJogo.Content.ReadFromJsonAsync<JogoResponse>())!;
+
+        HttpResponseMessage resposta = await client.PostAsJsonAsync(
+            "/api/pedidos",
+            new { jogoId = jogo.Id }
+        );
+        resposta.StatusCode.Should().Be(HttpStatusCode.Accepted);
+        PedidoResponse pedido = (await resposta.Content.ReadFromJsonAsync<PedidoResponse>())!;
+
+        await using AsyncServiceScope scope = Factory.Services.CreateAsyncScope();
+        CatalogDbContext db = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
+
+        string corpo = await db
+            .Database.SqlQueryRaw<string>(
+                "SELECT body AS \"Value\" FROM outbox_message WHERE body LIKE {0}",
+                $"%{pedido.Id}%"
+            )
+            .SingleAsync();
+
+        corpo.Should().Contain("bruna@fcg.test");
+        corpo.Should().Contain("Bruna Lima");
+    }
+
+    [Theory]
+    [InlineData(null, "Carla")]
+    [InlineData("carla@fcg.test", null)]
+    public async Task PostSemEmailOuSemNomeFalhaAltoENaoCriaPedidoNemOutbox(
+        string? email,
+        string? nome
+    )
+    {
+        // Sem uma das duas claims o pedido não pode nascer: o evento é imutável depois de
+        // publicado, então propagar vazio produziria e-mail sem destinatário sem chance de conserto.
+        HttpClient admin = Factory.CreateAuthenticatedClient(JwtTestTokens.TokenAdmin());
+        var novoJogo = new { titulo = "Tunic", preco = 3300.00m };
+        HttpResponseMessage criacaoJogo = await admin.PostAsJsonAsync("/api/jogos", novoJogo);
+        JogoResponse jogo = (await criacaoJogo.Content.ReadFromJsonAsync<JogoResponse>())!;
+
+        HttpClient client = Factory.CreateAuthenticatedClient(
+            JwtTestTokens.TokenSemClaims(Guid.NewGuid(), email, nome)
+        );
+
+        HttpResponseMessage resposta = await client.PostAsJsonAsync(
+            "/api/pedidos",
+            new { jogoId = jogo.Id }
+        );
+
+        resposta.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+
+        await using AsyncServiceScope scope = Factory.Services.CreateAsyncScope();
+        CatalogDbContext db = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
+
+        int pedidos = await db
+            .Database.SqlQueryRaw<int>(
+                "SELECT count(*)::int AS \"Value\" FROM pedidos WHERE jogo_id = {0}",
+                jogo.Id
+            )
+            .SingleAsync();
+        pedidos.Should().Be(0);
+
+        int linhasOutbox = await db
+            .Database.SqlQueryRaw<int>(
+                "SELECT count(*)::int AS \"Value\" FROM outbox_message WHERE body LIKE {0}",
+                $"%{jogo.Id}%"
+            )
+            .SingleAsync();
+        linhasOutbox.Should().Be(0);
+    }
+
+    [Fact]
     public async Task PostDuplicadoPendenteFazRollbackDePedidoEDeOutbox()
     {
         HttpClient client = Factory.CreateAuthenticatedClient(JwtTestTokens.TokenAdmin());
