@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Fcg.Catalog.Api.Authorization;
 using Fcg.Catalog.Application.DTOs;
 using Fcg.Catalog.Application.UseCases.Pedidos;
@@ -37,8 +36,13 @@ public class PedidosController(
         )
             throw new DomainAuthException("Token sem claim 'sub' válida.");
 
-        string email = User.FindFirst(ClaimTypes.Email)?.Value ?? string.Empty;
-        string nome = User.FindFirst(ClaimTypes.Name)?.Value ?? string.Empty;
+        // email/nome viajam no fat event até a notificação de compra e o evento é imutável depois
+        // de publicado: ausentes, nada corrige o e-mail sem destinatário depois. Falha alto aqui.
+        if (User.FindFirst(JwtRegisteredClaimNames.Email)?.Value is not { Length: > 0 } email)
+            throw new DomainAuthException("Token sem claim 'email' válida.");
+
+        if (User.FindFirst(JwtRegisteredClaimNames.Name)?.Value is not { Length: > 0 } nome)
+            throw new DomainAuthException("Token sem claim 'name' válida.");
 
         PedidoResponse pedido = await criarPedido.ExecutarAsync(
             request,
