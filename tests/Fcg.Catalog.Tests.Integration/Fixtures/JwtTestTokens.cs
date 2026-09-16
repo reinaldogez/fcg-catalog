@@ -66,14 +66,20 @@ public static class JwtTestTokens
     public static string TokenUsuario(Guid sub, string? email = null, string? nome = null) =>
         GenerateToken(sub, email ?? "usuario@fcg.test", nome ?? "Usuário FCG", role: null);
 
-    public static string GenerateToken(Guid sub, string email, string nome, string? role)
+    // Token sem a claim 'email' (ou sem 'name'): passa null no campo a omitir. Serve aos testes
+    // que provam que o fluxo de pedido falha alto em vez de propagar vazio até a notificação.
+    public static string TokenSemClaims(Guid sub, string? email, string? nome) =>
+        GenerateToken(sub, email, nome, role: null);
+
+    public static string GenerateToken(Guid sub, string? email, string? nome, string? role)
     {
-        List<Claim> claims =
-        [
-            new Claim(JwtRegisteredClaimNames.Sub, sub.ToString()),
-            new Claim(ClaimTypes.Email, email),
-            new Claim(ClaimTypes.Name, nome),
-        ];
+        // sub/email/name em forma curta e role na URI longa: é o formato que o identity emite,
+        // e a fixture precisa reproduzi-lo para os testes valerem como prova.
+        List<Claim> claims = [new Claim(JwtRegisteredClaimNames.Sub, sub.ToString())];
+        if (email is not null)
+            claims.Add(new Claim(JwtRegisteredClaimNames.Email, email));
+        if (nome is not null)
+            claims.Add(new Claim(JwtRegisteredClaimNames.Name, nome));
         if (role is not null)
             claims.Add(new Claim(ClaimTypes.Role, role));
 
