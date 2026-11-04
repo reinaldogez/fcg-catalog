@@ -8,6 +8,7 @@ using Fcg.Catalog.Api.OpenApi;
 using Fcg.Catalog.Application;
 using Fcg.Catalog.Application.UseCases.Biblioteca;
 using Fcg.Catalog.Infrastructure;
+using Fcg.Catalog.Infrastructure.Busca;
 using Fcg.Catalog.Infrastructure.DynamoDb;
 using Fcg.Catalog.Infrastructure.Persistence;
 using Fcg.Catalog.Infrastructure.Seed;
@@ -105,6 +106,11 @@ await using (AsyncServiceScope escopo = app.Services.CreateAsyncScope())
         app.Logger.LogWarning(excecao, "Tabela do read model não pôde ser garantida no boot.");
     }
 }
+
+// Uma linha só, no boot: a busca desligada não derruba nada e por isso não apareceria em lugar
+// algum além do erro de quem chamar o endpoint de busca.
+if (!app.Services.GetRequiredService<OpenSearchSettings>().Habilitado)
+    app.Logger.LogWarning("Busca desligada: {Chave} ausente.", OpenSearchSettings.ChaveEndpoint);
 
 app.UseSerilogRequestLogging();
 

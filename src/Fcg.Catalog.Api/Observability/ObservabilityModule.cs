@@ -74,6 +74,10 @@ public static class ObservabilityModule
                         options.SetVerboseDatabaseStatements = false
                     );
 
+                    // O cliente do índice de busca emite span próprio por requisição, com a
+                    // operação e o índice, além do span HTTP genérico da instrumentação de saída.
+                    tracing.AddSource("OpenSearch.Net.RequestPipeline");
+
                     tracing.AddOtlpExporter(exporter => exporter.Endpoint = new Uri(otelEndpoint));
                 })
                 .WithMetrics(metrics =>

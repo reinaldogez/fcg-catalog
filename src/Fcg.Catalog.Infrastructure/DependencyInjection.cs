@@ -1,6 +1,7 @@
 using Fcg.Catalog.Application.Abstractions;
 using Fcg.Catalog.Domain.Interfaces;
 using Fcg.Catalog.Domain.Services;
+using Fcg.Catalog.Infrastructure.Busca;
 using Fcg.Catalog.Infrastructure.Cache;
 using Fcg.Catalog.Infrastructure.DynamoDb;
 using Fcg.Catalog.Infrastructure.Messaging;
@@ -57,6 +58,10 @@ public static class DependencyInjection
         // Cache do catálogo — config-gated: sem host de Redis a extensão registra o pass-through
         // e a aplicação sobe sem cache, em vez de falhar por dependência opcional ausente.
         services.AddCatalogCache(configuration);
+
+        // Índice de busca — config-gated: sem endpoint a aplicação sobe sem busca, e o endpoint
+        // de busca responde indisponível em vez de fingir um resultado vazio.
+        services.AddCatalogSearch(configuration);
 
         services.AddCatalogMessaging(configuration);
 

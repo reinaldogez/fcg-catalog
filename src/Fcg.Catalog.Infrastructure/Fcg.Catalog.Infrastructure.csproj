@@ -22,6 +22,10 @@
     <PackageReference Include="Fcg.Contracts" Version="1.1.0" />
     <!-- Armazenamento do read model da biblioteca. -->
     <PackageReference Include="AWSSDK.DynamoDBv2" Version="4.0.102.1" />
+    <!-- Índice de busca do catálogo: client oficial compatível com OpenSearch 3, e assinatura
+         SigV4 das requisições pela identidade do pod, sem credencial em configuração. -->
+    <PackageReference Include="OpenSearch.Client" Version="2.3.0" />
+    <PackageReference Include="OpenSearch.Net.Auth.AwsSigV4" Version="2.3.0" />
   </ItemGroup>
 
   <ItemGroup>
