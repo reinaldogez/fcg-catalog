@@ -131,9 +131,12 @@ public class CriarPedidoOutboxTests(CatalogApiFactory factory) : IntegrationTest
             .SingleAsync();
         pedidos.Should().Be(0);
 
+        // Só o evento do pedido: a criação do jogo, no arrange, grava o próprio evento de
+        // alteração com o mesmo id no corpo.
         int linhasOutbox = await db
             .Database.SqlQueryRaw<int>(
-                "SELECT count(*)::int AS \"Value\" FROM outbox_message WHERE body LIKE {0}",
+                "SELECT count(*)::int AS \"Value\" FROM outbox_message "
+                    + "WHERE message_type LIKE '%OrderPlacedEvent%' AND body LIKE {0}",
                 $"%{jogo.Id}%"
             )
             .SingleAsync();
@@ -174,9 +177,12 @@ public class CriarPedidoOutboxTests(CatalogApiFactory factory) : IntegrationTest
             .SingleAsync();
         pedidos.Should().Be(1);
 
+        // Só o evento do pedido: a criação do jogo, no arrange, grava o próprio evento de
+        // alteração com o mesmo id no corpo.
         int linhasOutbox = await db
             .Database.SqlQueryRaw<int>(
-                "SELECT count(*)::int AS \"Value\" FROM outbox_message WHERE body LIKE {0}",
+                "SELECT count(*)::int AS \"Value\" FROM outbox_message "
+                    + "WHERE message_type LIKE '%OrderPlacedEvent%' AND body LIKE {0}",
                 $"%{jogo.Id}%"
             )
             .SingleAsync();

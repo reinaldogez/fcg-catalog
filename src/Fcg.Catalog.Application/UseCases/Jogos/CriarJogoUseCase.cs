@@ -1,15 +1,18 @@
 using Fcg.Catalog.Application.Abstractions;
 using Fcg.Catalog.Application.DTOs;
+using Fcg.Catalog.Application.Events;
 using Fcg.Catalog.Domain.Entities;
 using Fcg.Catalog.Domain.Interfaces;
 using Fcg.Catalog.Domain.ValueObjects;
+using MassTransit;
 
 namespace Fcg.Catalog.Application.UseCases.Jogos;
 
 public class CriarJogoUseCase(
     IJogoRepository jogoRepository,
     IUnitOfWork unitOfWork,
-    ICacheCatalogo cacheCatalogo
+    ICacheCatalogo cacheCatalogo,
+    IPublishEndpoint publishEndpoint
 )
 {
     public async Task<JogoResponse> ExecutarAsync(
@@ -26,6 +29,14 @@ public class CriarJogoUseCase(
         );
 
         await jogoRepository.AdicionarAsync(jogo, cancellationToken);
+
+        // Publish antes do commit: a linha do outbox cai na mesma transação que o jogo, e a
+        // indexação nunca fica sem o evento de um jogo gravado. A entrega ao broker é pós-commit.
+        await publishEndpoint.Publish(
+            new JogoAlteradoEvent { JogoId = jogo.Id },
+            cancellationToken
+        );
+
         await unitOfWork.SalvarAlteracoesAsync(cancellationToken);
 
         // Depois do commit: invalidar antes deixaria uma janela em que a leitura recacheia a

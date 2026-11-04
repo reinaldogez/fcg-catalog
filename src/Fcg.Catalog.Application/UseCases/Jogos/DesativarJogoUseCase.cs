@@ -1,13 +1,16 @@
 using Fcg.Catalog.Application.Abstractions;
+using Fcg.Catalog.Application.Events;
 using Fcg.Catalog.Domain.Entities;
 using Fcg.Catalog.Domain.Interfaces;
+using MassTransit;
 
 namespace Fcg.Catalog.Application.UseCases.Jogos;
 
 public class DesativarJogoUseCase(
     IJogoRepository jogoRepository,
     IUnitOfWork unitOfWork,
-    ICacheCatalogo cacheCatalogo
+    ICacheCatalogo cacheCatalogo,
+    IPublishEndpoint publishEndpoint
 )
 {
     // Retorna se o jogo existia (para o controller distinguir 204 de 404).
@@ -19,6 +22,14 @@ public class DesativarJogoUseCase(
 
         jogo.Desativar();
         jogoRepository.Atualizar(jogo);
+
+        // Publish antes do commit, como na criação: o jogo desativado sai do índice pelo mesmo
+        // evento, e não por um evento próprio de remoção.
+        await publishEndpoint.Publish(
+            new JogoAlteradoEvent { JogoId = jogo.Id },
+            cancellationToken
+        );
+
         await unitOfWork.SalvarAlteracoesAsync(cancellationToken);
 
         // Simétrico à atualização: a desativação muda o jogo nos dois lugares onde ele é servido.

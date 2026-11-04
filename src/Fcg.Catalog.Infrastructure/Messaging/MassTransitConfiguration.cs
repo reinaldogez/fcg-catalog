@@ -1,3 +1,4 @@
+using Fcg.Catalog.Application.Events;
 using Fcg.Catalog.Infrastructure.Consumers;
 using Fcg.Catalog.Infrastructure.Persistence;
 using Fcg.Contracts.Events;
@@ -75,6 +76,11 @@ public static class MassTransitConfiguration
                     // Publish: order-placed (fanout).
                     cfg.Message<OrderPlacedEvent>(m => m.SetEntityName("order-placed"));
                     cfg.Publish<OrderPlacedEvent>(p => p.ExchangeType = "fanout");
+
+                    // Publish: jogo-alterado (fanout). Evento interno, consumido pelo próprio
+                    // catálogo para manter o índice de busca.
+                    cfg.Message<JogoAlteradoEvent>(m => m.SetEntityName("jogo-alterado"));
+                    cfg.Publish<JogoAlteradoEvent>(p => p.ExchangeType = "fanout");
 
                     // Consume: bind da fila na exchange payment-processed (publicada pelo payments).
                     cfg.Message<PaymentProcessedEvent>(m => m.SetEntityName("payment-processed"));

@@ -1,9 +1,11 @@
 using Fcg.Catalog.Application.Abstractions;
+using Fcg.Catalog.Application.Events;
 using Fcg.Catalog.Application.UseCases.Jogos;
 using Fcg.Catalog.Domain.Entities;
 using Fcg.Catalog.Domain.Interfaces;
 using Fcg.Catalog.Domain.ValueObjects;
 using FluentAssertions;
+using MassTransit;
 using Moq;
 using Xunit;
 
@@ -14,13 +16,15 @@ public class DesativarJogoUseCaseTests
     private readonly Mock<IJogoRepository> _jogoRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<ICacheCatalogo> _cacheCatalogo = new();
+    private readonly Mock<IPublishEndpoint> _publishEndpoint = new();
     private readonly DesativarJogoUseCase _useCase;
 
     public DesativarJogoUseCaseTests() =>
         _useCase = new DesativarJogoUseCase(
             _jogoRepository.Object,
             _unitOfWork.Object,
-            _cacheCatalogo.Object
+            _cacheCatalogo.Object,
+            _publishEndpoint.Object
         );
 
     [Fact]
@@ -64,6 +68,12 @@ public class DesativarJogoUseCaseTests
             c => c.InvalidarDetalheAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
             Times.Never
         );
+
+        // Sem jogo não há o que indexar: o evento só nasce junto de uma escrita.
+        _publishEndpoint.Verify(
+            p => p.Publish(It.IsAny<JogoAlteradoEvent>(), It.IsAny<CancellationToken>()),
+            Times.Never
+        );
     }
 
     [Fact]
@@ -91,5 +101,39 @@ public class DesativarJogoUseCaseTests
         await _useCase.ExecutarAsync(jogo.Id, CancellationToken.None);
 
         ordem.Should().Equal("commit", "listagem", "detalhe");
+    }
+
+    [Fact]
+    public async Task DevePublicarJogoAlteradoUmaVezAntesDoCommit()
+    {
+        var jogo = Jogo.Criar(Titulo.Criar("Limbo"), Preco.Criar(40m));
+        Guid jogoId = jogo.Id;
+        _jogoRepository
+            .Setup(r => r.ObterPorIdAsync(jogo.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(jogo);
+
+        // Grava a ordem real das chamadas: publicar antes do commit é o que põe a linha do outbox
+        // na mesma transação do jogo.
+        List<string> ordem = [];
+        List<JogoAlteradoEvent> publicados = [];
+        _publishEndpoint
+            .Setup(p => p.Publish(It.IsAny<JogoAlteradoEvent>(), It.IsAny<CancellationToken>()))
+            .Callback<JogoAlteradoEvent, CancellationToken>(
+                (evento, _) =>
+                {
+                    ordem.Add("publish");
+                    publicados.Add(evento);
+                }
+            )
+            .Returns(Task.CompletedTask);
+        _unitOfWork
+            .Setup(u => u.SalvarAlteracoesAsync(It.IsAny<CancellationToken>()))
+            .Callback(() => ordem.Add("commit"))
+            .Returns(Task.CompletedTask);
+
+        await _useCase.ExecutarAsync(jogo.Id, CancellationToken.None);
+
+        ordem.Should().Equal("publish", "commit");
+        publicados.Should().ContainSingle().Which.JogoId.Should().Be(jogoId);
     }
 }
