@@ -1,4 +1,5 @@
 using Fcg.Catalog.Application.Abstractions;
+using Fcg.Catalog.Application.DTOs;
 
 namespace Fcg.Catalog.Infrastructure.Busca;
 
@@ -6,7 +7,10 @@ namespace Fcg.Catalog.Infrastructure.Busca;
 // está pronto. Com isso o consumer de indexação confirma a mensagem sem efeito, e a topologia do
 // broker é a mesma em todo ambiente — registrar o consumer só com a busca ligada deixaria uma
 // fila órfã num broker persistente.
-public sealed class IndiceDeJogosDesligado : IIndiceDeJogos, IPreparacaoDoIndice
+//
+// A consulta, ao contrário, falha: o gate decide se o ambiente tem busca, mas a busca continua
+// sendo um modelo de leitura, e uma lista vazia afirmaria que nenhum jogo casa com o termo.
+public sealed class IndiceDeJogosDesligado : IIndiceDeJogos, IPreparacaoDoIndice, IBuscaDeJogos
 {
     public Task<ResultadoEscritaIndice> GravarAsync(
         DocumentoJogo documento,
@@ -27,4 +31,14 @@ public sealed class IndiceDeJogosDesligado : IIndiceDeJogos, IPreparacaoDoIndice
 
     public Task<long> ContarAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult(0L);
+
+    public Task<IReadOnlyList<ResultadoBuscaJogoResponse>> BuscarAsync(
+        string termo,
+        int deslocamento,
+        int tamanho,
+        CancellationToken cancellationToken = default
+    ) =>
+        Task.FromException<IReadOnlyList<ResultadoBuscaJogoResponse>>(
+            new BuscaIndisponivelException("A busca não está habilitada neste ambiente.")
+        );
 }

@@ -15,6 +15,7 @@ public static class DependencyInjection
         services.AddScoped<AtualizarJogoUseCase>();
         services.AddScoped<DesativarJogoUseCase>();
         services.AddScoped<IndexarJogoUseCase>();
+        services.AddScoped<BuscarJogosUseCase>();
 
         services.AddScoped<CriarPedidoUseCase>();
         services.AddScoped<ObterPedidoPorIdUseCase>();

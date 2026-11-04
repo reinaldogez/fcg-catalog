@@ -1,4 +1,5 @@
 using Fcg.Catalog.Application.Abstractions;
+using Fcg.Catalog.Application.DTOs;
 using OpenSearch.Client;
 using OpenSearch.Net;
 
@@ -8,15 +9,98 @@ namespace Fcg.Catalog.Infrastructure.Busca;
 // forma do documento e a leitura das respostas do cluster, que viveriam duplicadas em classes
 // separadas.
 //
-// O cliente não lança em resposta de erro: devolve a resposta inválida. Os desfechos esperados
-// são traduzidos aqui; qualquer outro vira exceção, para que o consumer repita.
+// O cliente não lança em resposta de erro: devolve a resposta inválida. Na escrita, os desfechos
+// esperados são traduzidos aqui e qualquer outro vira exceção, para que o consumer repita; na
+// consulta, toda falha é indisponibilidade da busca.
 public sealed class OpenSearchIndiceDeJogos(IOpenSearchClient cliente)
     : IIndiceDeJogos,
-        IPreparacaoDoIndice
+        IPreparacaoDoIndice,
+        IBuscaDeJogos
 {
     private const string ConflitoDeVersao = "version_conflict_engine_exception";
     private const string IndiceInexistente = "index_not_found_exception";
     private const string IndiceJaExistente = "resource_already_exists_exception";
+
+    // O título pesa mais que o resto: casar no nome do jogo diz mais do que casar na descrição.
+    private const double PesoDoTitulo = 3;
+
+    // Os padrões do motor, declarados para que a semântica do fuzzy não mude com a versão do
+    // cluster: sem prefixo exato, até 50 termos por expansão, transposição contando uma edição.
+    private const int TamanhoDoPrefixoExato = 0;
+    private const int ExpansoesMaximas = 50;
+
+    public async Task<IReadOnlyList<ResultadoBuscaJogoResponse>> BuscarAsync(
+        string termo,
+        int deslocamento,
+        int tamanho,
+        CancellationToken cancellationToken = default
+    )
+    {
+        ISearchResponse<DocumentoJogo> resposta;
+
+        try
+        {
+            resposta = await cliente.SearchAsync<DocumentoJogo>(
+                busca =>
+                    busca
+                        .Index(MapeamentoDoIndice.NomeDoIndice)
+                        .From(deslocamento)
+                        .Size(tamanho)
+                        // Melhor campo: aceita fuzzy, e a pontuação de um documento é a do campo
+                        // que melhor casa. Com "ou", palavra a mais ou com erro não zera o
+                        // resultado, e quem casa mais termos sobe pela relevância.
+                        .Query(consulta =>
+                            consulta.MultiMatch(multi =>
+                                multi
+                                    .Type(TextQueryType.BestFields)
+                                    .Fields(campos =>
+                                        campos
+                                            .Field(documento => documento.Titulo, PesoDoTitulo)
+                                            .Field(documento => documento.Desenvolvedora)
+                                            .Field(documento => documento.Descricao)
+                                    )
+                                    .Query(termo)
+                                    .Fuzziness(Fuzziness.Auto)
+                                    .Operator(Operator.Or)
+                                    .PrefixLength(TamanhoDoPrefixoExato)
+                                    .MaxExpansions(ExpansoesMaximas)
+                                    .FuzzyTranspositions()
+                            )
+                        )
+                        // Desempate pelo id: sem ele, a paginação por deslocamento sobre empates
+                        // de pontuação não é determinística.
+                        .Sort(ordem =>
+                            ordem
+                                .Descending(SortSpecialField.Score)
+                                .Ascending(documento => documento.Id)
+                        )
+                        .TrackScores(),
+                cancellationToken
+            );
+        }
+        catch (Exception excecao) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new BuscaIndisponivelException("O índice de busca não respondeu.", excecao);
+        }
+
+        if (!resposta.IsValid)
+        {
+            // Cliente que desistiu não é indisponibilidade: o cancelamento segue o seu caminho.
+            cancellationToken.ThrowIfCancellationRequested();
+
+            throw new BuscaIndisponivelException(
+                "O índice de busca não respondeu.",
+                Falha(resposta, "buscar")
+            );
+        }
+
+        return
+        [
+            .. resposta.Hits.Select(acerto =>
+                ResultadoBuscaJogoResponse.De(acerto.Source, acerto.Score ?? 0)
+            ),
+        ];
+    }
 
     public async Task<ResultadoEscritaIndice> GravarAsync(
         DocumentoJogo documento,
@@ -150,7 +234,7 @@ public sealed class OpenSearchIndiceDeJogos(IOpenSearchClient cliente)
 
     // Sem o corpo da requisição na mensagem: o motivo do cluster ou a falha de transporte bastam
     // para o diagnóstico, e o log não carrega o documento.
-    private static InvalidOperationException Falha(ResponseBase resposta, string operacao) =>
+    private static InvalidOperationException Falha(IResponse resposta, string operacao) =>
         new(
             $"Falha ao {operacao} no índice de busca: "
                 + (

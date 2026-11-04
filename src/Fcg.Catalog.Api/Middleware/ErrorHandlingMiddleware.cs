@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
+using Fcg.Catalog.Application.Abstractions;
 using Fcg.Catalog.Domain.Exceptions;
 
 namespace Fcg.Catalog.Api.Middleware;
@@ -50,6 +51,23 @@ public class ErrorHandlingMiddleware(RequestDelegate next, ILogger<ErrorHandling
                 context,
                 StatusCodes.Status400BadRequest,
                 "Requisição inválida",
+                ex.Message
+            );
+        }
+        catch (BuscaIndisponivelException ex)
+        {
+            // Dependência fora do ar, não erro do serviço: o motivo do cluster vai só ao log, e o
+            // cliente recebe o 503 do próprio serviço antes de a borda cortar a requisição.
+            logger.LogWarning(
+                ex,
+                "Busca indisponível ao processar {Method} {Path}",
+                context.Request.Method,
+                context.Request.Path
+            );
+            await EscreverProblemaAsync(
+                context,
+                StatusCodes.Status503ServiceUnavailable,
+                "Busca indisponível",
                 ex.Message
             );
         }

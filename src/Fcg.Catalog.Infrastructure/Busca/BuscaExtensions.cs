@@ -31,6 +31,9 @@ public static class BuscaExtensions
             services.AddSingleton<IPreparacaoDoIndice>(sp =>
                 sp.GetRequiredService<IndiceDeJogosDesligado>()
             );
+            services.AddSingleton<IBuscaDeJogos>(sp =>
+                sp.GetRequiredService<IndiceDeJogosDesligado>()
+            );
 
             return services;
         }
@@ -49,6 +52,9 @@ public static class BuscaExtensions
             sp.GetRequiredService<OpenSearchIndiceDeJogos>()
         );
         services.AddSingleton<IPreparacaoDoIndice>(sp =>
+            sp.GetRequiredService<OpenSearchIndiceDeJogos>()
+        );
+        services.AddSingleton<IBuscaDeJogos>(sp =>
             sp.GetRequiredService<OpenSearchIndiceDeJogos>()
         );
 
