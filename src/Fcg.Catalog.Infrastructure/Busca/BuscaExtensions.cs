@@ -1,3 +1,4 @@
+using Fcg.Catalog.Application.Abstractions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using OpenSearch.Client;
@@ -23,6 +24,14 @@ public static class BuscaExtensions
 
         if (!settings.Habilitado)
         {
+            services.AddSingleton<IndiceDeJogosDesligado>();
+            services.AddSingleton<IIndiceDeJogos>(sp =>
+                sp.GetRequiredService<IndiceDeJogosDesligado>()
+            );
+            services.AddSingleton<IPreparacaoDoIndice>(sp =>
+                sp.GetRequiredService<IndiceDeJogosDesligado>()
+            );
+
             return services;
         }
 
@@ -32,6 +41,16 @@ public static class BuscaExtensions
         IOpenSearchClient cliente = CriarCliente(settings);
 
         services.AddSingleton(cliente);
+
+        // As portas resolvem a mesma instância: a classe não guarda estado além do cliente, que
+        // já é singleton.
+        services.AddSingleton<OpenSearchIndiceDeJogos>();
+        services.AddSingleton<IIndiceDeJogos>(sp =>
+            sp.GetRequiredService<OpenSearchIndiceDeJogos>()
+        );
+        services.AddSingleton<IPreparacaoDoIndice>(sp =>
+            sp.GetRequiredService<OpenSearchIndiceDeJogos>()
+        );
 
         // Fora da prontidão de propósito: o domínio de busca pode nascer depois do serviço, e
         // tirar do balanceamento por causa dele levaria junto catálogo, pedidos e biblioteca.

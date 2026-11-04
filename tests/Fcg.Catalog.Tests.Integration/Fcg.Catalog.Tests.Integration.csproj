@@ -19,6 +19,7 @@
     <PackageReference Include="Testcontainers.PostgreSql" Version="4.15.0" />
     <PackageReference Include="Testcontainers.RabbitMq" Version="4.15.0" />
     <PackageReference Include="Testcontainers.DynamoDb" Version="4.15.0" />
+    <PackageReference Include="Testcontainers.OpenSearch" Version="4.15.0" />
   </ItemGroup>
 
   <ItemGroup>

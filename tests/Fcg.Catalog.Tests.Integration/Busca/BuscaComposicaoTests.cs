@@ -1,3 +1,4 @@
+using Fcg.Catalog.Application.Abstractions;
 using Fcg.Catalog.Domain.Interfaces;
 using Fcg.Catalog.Domain.Services;
 using Fcg.Catalog.Infrastructure.Busca;
@@ -66,6 +67,40 @@ public class BuscaComposicaoTests
 
         provider.GetService<IOpenSearchClient>().Should().BeNull();
         NomesDosChecks(provider).Should().NotContain("opensearch");
+    }
+
+    // Escrita descartada e cluster nunca pronto: o consumer confirma sem efeito e a reconstrução
+    // não tem o que esperar.
+    [Fact]
+    public async Task SemEndpointAsPortasDoIndiceDevemSerAsDesligadas()
+    {
+        await using ServiceProvider provider = Compor([]);
+
+        IIndiceDeJogos escrita = provider.GetRequiredService<IIndiceDeJogos>();
+        IPreparacaoDoIndice preparacao = provider.GetRequiredService<IPreparacaoDoIndice>();
+
+        escrita.Should().BeOfType<IndiceDeJogosDesligado>();
+        preparacao.Should().BeSameAs(escrita);
+        (await escrita.RemoverAsync(Guid.NewGuid(), 1))
+            .Should()
+            .Be(ResultadoEscritaIndice.Aplicada);
+        (await preparacao.EstaSaudavelAsync()).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ComEndpointAsPortasDoIndiceDevemSerAsDoOpenSearch()
+    {
+        await using ServiceProvider provider = Compor(
+            new Dictionary<string, string?>
+            {
+                [OpenSearchSettings.ChaveEndpoint] = "http://localhost:9200",
+            }
+        );
+
+        IIndiceDeJogos escrita = provider.GetRequiredService<IIndiceDeJogos>();
+
+        escrita.Should().BeOfType<OpenSearchIndiceDeJogos>();
+        provider.GetRequiredService<IPreparacaoDoIndice>().Should().BeSameAs(escrita);
     }
 
     [Fact]
