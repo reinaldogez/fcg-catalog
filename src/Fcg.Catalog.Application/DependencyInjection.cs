@@ -28,6 +28,10 @@ public static class DependencyInjection
         // fica ociosa, como o seeder.
         services.AddScoped<ReprojetarBibliotecaUseCase>();
 
+        // Reconstrução do índice de busca — resolvida pela reconstrução automática do boot e pelo
+        // Job (--reindexar).
+        services.AddScoped<ReindexarJogosUseCase>();
+
         return services;
     }
 }

@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using OpenSearch.Client;
 using OpenSearch.Net;
@@ -118,6 +119,33 @@ public class BuscaComposicaoTests
             .Value.Registrations.Single(r => r.Name == "opensearch");
 
         registro.Tags.Should().BeEmpty();
+    }
+
+    // Sem cluster a esperar nem índice a preencher, a reconstrução automática não tem razão de
+    // existir no processo.
+    [Fact]
+    public async Task SemEndpointNaoDeveRegistrarAReconstrucaoAutomatica()
+    {
+        await using ServiceProvider provider = Compor([]);
+
+        provider.GetServices<IHostedService>().OfType<ReindexacaoAutomatica>().Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ComEndpointDeveRegistrarAReconstrucaoAutomatica()
+    {
+        await using ServiceProvider provider = Compor(
+            new Dictionary<string, string?>
+            {
+                [OpenSearchSettings.ChaveEndpoint] = "http://localhost:9200",
+            }
+        );
+
+        provider
+            .GetServices<IHostedService>()
+            .OfType<ReindexacaoAutomatica>()
+            .Should()
+            .ContainSingle();
     }
 
     // Timeout abaixo do teto do gateway, nó único e nenhuma repetição no cliente: o 503 da busca

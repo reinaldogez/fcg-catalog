@@ -57,6 +57,9 @@ public static class BuscaExtensions
         // A falha fica restrita ao endpoint de busca; aqui o estado só é informado.
         services.AddHealthChecks().AddCheck<OpenSearchHealthCheck>("opensearch");
 
+        // Só com a busca ligada: desligada, não há cluster a esperar nem índice a preencher.
+        services.AddHostedService<ReindexacaoAutomatica>();
+
         return services;
     }
 
