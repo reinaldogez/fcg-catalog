@@ -29,6 +29,10 @@ public static class MassTransitConfiguration
             x.AddConsumer<PaymentProcessedConsumer>();
             x.AddConsumer<PaymentProcessedProjectionConsumer>();
 
+            // Registrado com a busca ligada ou não: desligada, a escrita no índice é um null object
+            // e o consumer confirma sem efeito, e a topologia do broker é a mesma em todo ambiente.
+            x.AddConsumer<JogoAlteradoConsumer>();
+
             x.UsingRabbitMq(
                 (context, cfg) =>
                 {
@@ -132,6 +136,42 @@ public static class MassTransitConfiguration
                             });
 
                             e.ConfigureConsumer<PaymentProcessedProjectionConsumer>(context);
+                        }
+                    );
+
+                    // Fila do próprio catálogo na exchange jogo-alterado: mantém o índice de busca.
+                    cfg.ReceiveEndpoint(
+                        "jogo-alterado.fcg-catalog",
+                        e =>
+                        {
+                            // Sem Inbox, de propósito. O efeito é idempotente por construção: o
+                            // consumer relê o jogo e grava ou remove o documento pelo id, com a
+                            // versão tirada do instante de alteração, então reentrega reescreve o
+                            // mesmo estado. Ele lê o PostgreSQL mas não escreve nele, e declarar o
+                            // Inbox abriria uma transação sem nada a proteger.
+                            //
+                            // Retry igual ao da projeção da biblioteca, pelo mesmo motivo: o índice
+                            // é dependência remota, e as falhas transitórias dela se resolvem em
+                            // segundos. Esgotadas as tentativas, a mensagem vai para a fila de
+                            // erro, e o que ficou para trás é corrigido pela reconstrução do índice.
+                            //
+                            // Sem limite de concorrência: a escrita versionada descarta o estado
+                            // mais velho, então dois eventos do mesmo jogo em paralelo, ou fora de
+                            // ordem, convergem para o estado atual.
+                            //
+                            // Índice ausente é confirmado sem efeito: quem cria o índice é a
+                            // reconstrução, que lê a fonte só depois de criá-lo e traz o jogo junto.
+                            e.UseMessageRetry(r =>
+                            {
+                                r.Interval(3, TimeSpan.FromSeconds(2));
+
+                                // Evento malformado é falha determinística: repetir não muda o
+                                // desfecho e só atrasa a ida para a fila de erro.
+                                r.Ignore<ArgumentException>();
+                                r.Ignore<FormatException>();
+                            });
+
+                            e.ConfigureConsumer<JogoAlteradoConsumer>(context);
                         }
                     );
                 }
