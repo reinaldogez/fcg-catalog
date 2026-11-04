@@ -334,3 +334,4 @@ Os manifestos **Kubernetes** deste serviço **não vivem aqui**: estão centrali
 de orquestração **`fcg-ops`** (Deployment/Service/ConfigMap/Secret + o `Job` de migrate/seed).
 
 Entrega: cada push na `main` publica a imagem `:<sha>` no ECR e atualiza o cluster EKS quando ele está de pé (`.github/workflows/cd.yml`).
+O pipeline entra no cluster por um Role proprio no namespace `fcg`, sem leitura de Secret nem ConfigMap.
