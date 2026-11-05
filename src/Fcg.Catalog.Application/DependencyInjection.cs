@@ -14,6 +14,8 @@ public static class DependencyInjection
         services.AddScoped<ListarJogosUseCase>();
         services.AddScoped<AtualizarJogoUseCase>();
         services.AddScoped<DesativarJogoUseCase>();
+        services.AddScoped<IndexarJogoUseCase>();
+        services.AddScoped<BuscarJogosUseCase>();
 
         services.AddScoped<CriarPedidoUseCase>();
         services.AddScoped<ObterPedidoPorIdUseCase>();
@@ -26,6 +28,10 @@ public static class DependencyInjection
         // Reconstrução do modelo de leitura — resolvida pelo Job (--reprojetar); no boot normal
         // fica ociosa, como o seeder.
         services.AddScoped<ReprojetarBibliotecaUseCase>();
+
+        // Reconstrução do índice de busca — resolvida pela reconstrução automática do boot e pelo
+        // Job (--reindexar).
+        services.AddScoped<ReindexarJogosUseCase>();
 
         return services;
     }

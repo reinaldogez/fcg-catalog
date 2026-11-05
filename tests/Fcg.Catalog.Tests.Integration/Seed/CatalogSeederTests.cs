@@ -58,4 +58,31 @@ public class CatalogSeederTests(CatalogApiFactory factory) : IntegrationTestBase
 
         contagemFinal.Should().Be(contagemInicial);
     }
+
+    // O seed grava direto, sem passar pelos use cases: nenhum evento de alteração nasce dele. Quem
+    // leva os jogos semeados ao índice de busca é a reconstrução ao subir.
+    [Fact]
+    public async Task SeedNaoDeveGravarEventoDeAlteracaoNoOutbox()
+    {
+        await using (AsyncServiceScope escrita = Factory.Services.CreateAsyncScope())
+        {
+            await escrita.ServiceProvider.GetRequiredService<CatalogSeeder>().SeedAsync();
+        }
+
+        await using AsyncServiceScope leitura = Factory.Services.CreateAsyncScope();
+        CatalogDbContext db = leitura.ServiceProvider.GetRequiredService<CatalogDbContext>();
+
+        // Depois do reset, jogos só contém os semeados; o outbox não é truncado, então a junção
+        // pelo id no corpo do evento isola o que este seed poderia ter gravado.
+        int eventos = await db
+            .Database.SqlQueryRaw<int>(
+                "SELECT count(*)::int AS \"Value\" FROM outbox_message o JOIN jogos j "
+                    + "ON o.body LIKE '%' || j.id::text || '%' "
+                    + "WHERE o.message_type LIKE '%JogoAlteradoEvent%'"
+            )
+            .SingleAsync();
+
+        (await db.Jogos.CountAsync()).Should().BePositive();
+        eventos.Should().Be(0);
+    }
 }

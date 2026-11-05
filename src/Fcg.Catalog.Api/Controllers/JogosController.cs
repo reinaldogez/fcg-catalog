@@ -18,9 +18,19 @@ public class JogosController(
     ObterJogoPorIdUseCase obterJogoPorId,
     AtualizarJogoUseCase atualizarJogo,
     DesativarJogoUseCase desativarJogo,
+    BuscarJogosUseCase buscarJogos,
     IDiagnosticContext diagnosticContext
 ) : ControllerBase
 {
+    private const string DescricaoDaBusca =
+        "Busca jogos do catálogo no índice de busca — uma projeção em OpenSearch alimentada pelos "
+        + "eventos de criação, edição e desativação de jogo. A busca tolera erros de digitação e "
+        + "ordena os resultados por relevância; o campo `relevancia` só é comparável entre itens "
+        + "da mesma resposta. O índice reflete o catálogo com um pequeno atraso: um jogo "
+        + "recém-criado ou editado pode ainda não constar, ou constar com o estado anterior. "
+        + "Jogos desativados não aparecem. Para o estado atual de um jogo específico, consulte "
+        + "`GET /api/jogos/{id}`, que lê a fonte da verdade.";
+
     // Propriedade estruturada da linha única que o log de requisição emite, ao lado do tempo
     // decorrido: é o que torna a diferença de latência entre acerto e falta legível lado a lado.
     private const string PropriedadeDeCache = "cacheResultado";
@@ -56,6 +66,21 @@ public class JogosController(
 
         return Ok(jogos);
     }
+
+    // Segmento literal: não é guid, então não cai no detalhe. Sem registro de cache, porque a
+    // busca não passa pelo cache.
+    [HttpGet("search")]
+    [EndpointDescription(DescricaoDaBusca)]
+    [ProducesResponseType(
+        typeof(IReadOnlyList<ResultadoBuscaJogoResponse>),
+        StatusCodes.Status200OK
+    )]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> BuscarAsync(
+        [FromQuery] BuscarJogosRequest request,
+        CancellationToken cancellationToken
+    ) => Ok(await buscarJogos.ExecutarAsync(request, cancellationToken));
 
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(JogoResponse), StatusCodes.Status200OK)]

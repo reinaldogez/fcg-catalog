@@ -1,9 +1,11 @@
 using Fcg.Catalog.Application.Abstractions;
 using Fcg.Catalog.Application.DTOs;
+using Fcg.Catalog.Application.Events;
 using Fcg.Catalog.Application.UseCases.Jogos;
 using Fcg.Catalog.Domain.Entities;
 using Fcg.Catalog.Domain.Interfaces;
 using FluentAssertions;
+using MassTransit;
 using Moq;
 using Xunit;
 
@@ -14,13 +16,15 @@ public class CriarJogoUseCaseTests
     private readonly Mock<IJogoRepository> _jogoRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<ICacheCatalogo> _cacheCatalogo = new();
+    private readonly Mock<IPublishEndpoint> _publishEndpoint = new();
     private readonly CriarJogoUseCase _useCase;
 
     public CriarJogoUseCaseTests() =>
         _useCase = new CriarJogoUseCase(
             _jogoRepository.Object,
             _unitOfWork.Object,
-            _cacheCatalogo.Object
+            _cacheCatalogo.Object,
+            _publishEndpoint.Object
         );
 
     [Fact]
@@ -64,5 +68,37 @@ public class CriarJogoUseCaseTests
             c => c.InvalidarDetalheAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()),
             Times.Never
         );
+    }
+
+    [Fact]
+    public async Task DevePublicarJogoAlteradoUmaVezAntesDoCommit()
+    {
+        // Grava a ordem real das chamadas: publicar antes do commit é o que põe a linha do outbox
+        // na mesma transação do jogo.
+        List<string> ordem = [];
+        List<JogoAlteradoEvent> publicados = [];
+        _publishEndpoint
+            .Setup(p => p.Publish(It.IsAny<JogoAlteradoEvent>(), It.IsAny<CancellationToken>()))
+            .Callback<JogoAlteradoEvent, CancellationToken>(
+                (evento, _) =>
+                {
+                    ordem.Add("publish");
+                    publicados.Add(evento);
+                }
+            )
+            .Returns(Task.CompletedTask);
+        _unitOfWork
+            .Setup(u => u.SalvarAlteracoesAsync(It.IsAny<CancellationToken>()))
+            .Callback(() => ordem.Add("commit"))
+            .Returns(Task.CompletedTask);
+
+        JogoResponse response = await _useCase.ExecutarAsync(
+            new CriarJogoRequest("Inside", 60m),
+            CancellationToken.None
+        );
+        Guid jogoId = response.Id;
+
+        ordem.Should().Equal("publish", "commit");
+        publicados.Should().ContainSingle().Which.JogoId.Should().Be(jogoId);
     }
 }

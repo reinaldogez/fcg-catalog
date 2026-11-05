@@ -6,8 +6,11 @@ using Fcg.Catalog.Api.Middleware;
 using Fcg.Catalog.Api.Observability;
 using Fcg.Catalog.Api.OpenApi;
 using Fcg.Catalog.Application;
+using Fcg.Catalog.Application.Abstractions;
 using Fcg.Catalog.Application.UseCases.Biblioteca;
+using Fcg.Catalog.Application.UseCases.Jogos;
 using Fcg.Catalog.Infrastructure;
+using Fcg.Catalog.Infrastructure.Busca;
 using Fcg.Catalog.Infrastructure.DynamoDb;
 using Fcg.Catalog.Infrastructure.Persistence;
 using Fcg.Catalog.Infrastructure.Seed;
@@ -65,10 +68,16 @@ builder
 
 WebApplication app = builder.Build();
 
-// Modo Job: o mesmo binário aplica migrations, semeia e/ou reconstrói o modelo de leitura da
-// biblioteca, e encerra sem subir o host web. Flags independentes e combináveis; a ordem
-// migrate→seed→reprojetar é forçada aqui, não pela ordem dos args.
-if (args.Contains("--migrate") || args.Contains("--seed") || args.Contains("--reprojetar"))
+// Modo Job: o mesmo binário aplica migrations (--migrate), semeia (--seed), reconstrói o modelo de
+// leitura da biblioteca (--reprojetar) e/ou o índice de busca (--reindexar), e encerra sem subir o
+// host web. Flags independentes e combináveis; a ordem migrate→seed→reprojetar→reindexar é forçada
+// aqui, não pela ordem dos args.
+if (
+    args.Contains("--migrate")
+    || args.Contains("--seed")
+    || args.Contains("--reprojetar")
+    || args.Contains("--reindexar")
+)
 {
     using IServiceScope scope = app.Services.CreateScope();
 
@@ -82,6 +91,35 @@ if (args.Contains("--migrate") || args.Contains("--seed") || args.Contains("--re
         await scope
             .ServiceProvider.GetRequiredService<ReprojetarBibliotecaUseCase>()
             .ExecutarAsync();
+
+    if (args.Contains("--reindexar"))
+    {
+        // Uma verificação só, sem laço de espera: o Job fala uma vez e encerra, e quem repete é a
+        // política de retentativa do próprio Job, acionada pelo código de saída diferente de zero.
+        if (!app.Services.GetRequiredService<OpenSearchSettings>().Habilitado)
+        {
+            app.Logger.LogError(
+                "Reconstrução do índice pedida com a busca desligada: {Chave} ausente.",
+                OpenSearchSettings.ChaveEndpoint
+            );
+            Environment.ExitCode = 1;
+        }
+        else if (
+            !await scope
+                .ServiceProvider.GetRequiredService<IPreparacaoDoIndice>()
+                .EstaSaudavelAsync()
+        )
+        {
+            app.Logger.LogError("Cluster de busca indisponível; índice não reconstruído.");
+            Environment.ExitCode = 1;
+        }
+        else
+        {
+            await scope
+                .ServiceProvider.GetRequiredService<ReindexarJogosUseCase>()
+                .ExecutarAsync(somenteSeVazio: false);
+        }
+    }
 
     return;
 }
@@ -105,6 +143,11 @@ await using (AsyncServiceScope escopo = app.Services.CreateAsyncScope())
         app.Logger.LogWarning(excecao, "Tabela do read model não pôde ser garantida no boot.");
     }
 }
+
+// Uma linha só, no boot: a busca desligada não derruba nada e por isso não apareceria em lugar
+// algum além do erro de quem chamar o endpoint de busca.
+if (!app.Services.GetRequiredService<OpenSearchSettings>().Habilitado)
+    app.Logger.LogWarning("Busca desligada: {Chave} ausente.", OpenSearchSettings.ChaveEndpoint);
 
 app.UseSerilogRequestLogging();
 
