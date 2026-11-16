@@ -27,6 +27,7 @@ public class BuscarJogosUseCase(IBuscaDeJogos buscaDeJogos)
         string termo = request.Q?.Trim() ?? string.Empty;
 
         if (termo.Length == 0)
+            //throw new DomainException("Informe o termo de busca.");
             throw new DomainException("O termo de busca é obrigatório.");
 
         if (termo.Length > TamanhoMaximoDoTermo)
